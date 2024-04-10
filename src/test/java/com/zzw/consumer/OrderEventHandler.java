@@ -7,6 +7,12 @@ import com.zzw.collection.OrderEvent;
  */
 public class OrderEventHandler implements EventHandler<OrderEvent> {
 
+    private String consumerName;
+
+    public OrderEventHandler(String consumerName) {
+        this.consumerName = consumerName;
+    }
+
     /**
      * 消费者消费事件
      *
@@ -16,6 +22,6 @@ public class OrderEventHandler implements EventHandler<OrderEvent> {
      */
     @Override
     public void consume(OrderEvent event, long sequence, boolean endOfBatch) {
-        System.out.println("消费者消费事件: " + event + " sequence = " + sequence + " endOfBatch = " + endOfBatch);
+        System.out.println(consumerName + " 消费者消费事件: " + event + " sequence = " + sequence + " endOfBatch = " + endOfBatch);
     }
 }

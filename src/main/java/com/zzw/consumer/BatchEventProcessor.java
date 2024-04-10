@@ -45,11 +45,10 @@ public class BatchEventProcessor<T> implements Runnable {
 
         // 消费者线程主循环逻辑, 不断的尝试获取事件并进行消费(为了让代码更简单, 暂不考虑优雅停止消费者线程的功能)
         while (true) {
-            Util.sleep(1000); // 为了测试 endOfBatch, 让消费者慢一点
+            Util.sleep(200); // 为了测试, 让消费者慢一点
 
             try {
                 long availableConsumeIndex = this.sequenceBarrier.getAvailableConsumeSequence(nextConsumerIndex);
-                System.out.println(availableConsumeIndex); // 为了测试 endOfBatch
 
                 while (nextConsumerIndex <= availableConsumeIndex) {
                     // 取出可以消费的下标对应的事件, 交给 eventConsumer 消费
