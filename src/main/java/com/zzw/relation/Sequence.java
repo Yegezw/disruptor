@@ -15,6 +15,8 @@ public class Sequence {
      */
     private volatile long value = -1;
 
+    // ----------------------------------------
+
     private static final Unsafe UNSAFE;
     private static final long VALUE_OFFSET;
 
@@ -29,12 +31,16 @@ public class Sequence {
         }
     }
 
+    // =============================================================================
+
     public Sequence() {
     }
 
     public Sequence(long value) {
         this.value = value;
     }
+
+    // =============================================================================
 
     public long get() {
         return value;
@@ -52,5 +58,9 @@ public class Sequence {
         // this.value = value
         // 不会立即强制 CPU 刷新缓存, 导致其修改的最新值对其它 CPU 核心来说不是立即可见的(延迟几纳秒)
         UNSAFE.putOrderedLong(this, VALUE_OFFSET, value);
+    }
+
+    public boolean compareAndSet(long expect, long update) {
+        return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expect, update);
     }
 }
