@@ -2,10 +2,13 @@ package com.zzw.producer;
 
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
+import com.zzw.relation.SequenceUtil;
 import com.zzw.relation.wait.WaitStrategy;
 import lombok.Getter;
-import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -33,10 +36,10 @@ public class SingleProducerSequencer {
     // ----------------------------------------
 
     /**
-     * 生产者序号生成器所属 RingBuffer 的消费者的序号
+     * <p>生产者序号生成器所属 RingBuffer 的消费者序号集合
+     * <p>v2 版本简单起见, 先不和 disruptor 一样用数组 + unsafe 来实现
      */
-    @Setter
-    private Sequence consumerSequence;
+    private final List<Sequence> gatingConsumerSequenceList = new ArrayList<>();
     /**
      * 消费者等待策略
      */
@@ -55,7 +58,15 @@ public class SingleProducerSequencer {
     }
 
     public SequenceBarrier newBarrier() {
-        return new SequenceBarrier(this.currentProducerSequence, this.waitStrategy);
+        return new SequenceBarrier(this.currentProducerSequence, this.waitStrategy, new ArrayList<>());
+    }
+
+    public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
+        return new SequenceBarrier(this.currentProducerSequence, this.waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
+    }
+
+    public void addGatingConsumerSequenceList(Sequence newGatingConsumerSequence) {
+        this.gatingConsumerSequenceList.add(newGatingConsumerSequence);
     }
 
     // =============================================================================
@@ -71,8 +82,10 @@ public class SingleProducerSequencer {
      * 一次性申请可用的 n 个生产序号
      */
     public long next(int n) {
+        long nextValue = this.nextValue; // 已申请序号
+
         // 目标生产序号
-        long nextProducerSequence = this.nextValue + n;
+        long nextProducerSequence = nextValue + n;
         // 上一轮覆盖点 <= 消费序号
         long wrapPoint = nextProducerSequence - this.ringBufferSize;
 
@@ -92,7 +105,7 @@ public class SingleProducerSequencer {
 
             // 当生产者发现已超过消费者一圈, 就必须去读最新的消费者序号了, 看看消费者的消费进度是否推进了
             // 这里的 consumerSequence.get 是对 volatile 变量的读, 是实时的、强一致的读
-            while (wrapPoint > (minSequence = consumerSequence.get())) {
+            while (wrapPoint > (minSequence = SequenceUtil.getMinimumSequence(gatingConsumerSequenceList, nextValue))) {
                 // 消费进度没有推进, 则生产者无法获取可用的队列空间, 循环的间歇性 park 阻塞
                 // 如果消费者消费速度比较慢, 那么生产者线程将长时间的处于自旋状态, 严重浪费 CPU 资源
                 // 因此使用 next(n) 方式获取生产者序号时, 用户必须保证消费者有足够的消费速度

@@ -20,9 +20,9 @@ public class Sequence {
 
     static {
         try {
-            Field getUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            getUnsafe.setAccessible(true);
-            UNSAFE = (Unsafe) getUnsafe.get(null);
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            UNSAFE = (Unsafe) theUnsafe.get(null);
             VALUE_OFFSET = UNSAFE.objectFieldOffset(Sequence.class.getDeclaredField("value"));
         } catch (final Exception e) {
             throw new RuntimeException(e);
