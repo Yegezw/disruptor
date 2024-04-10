@@ -31,6 +31,7 @@ public class SingleProducerSequencer {
     /**
      * 当前已发布的生产序号(区别于 nextValue)
      */
+    @Getter
     private final Sequence currentProducerSequence = new Sequence();
 
     // ----------------------------------------
@@ -67,6 +68,10 @@ public class SingleProducerSequencer {
 
     public void addGatingConsumerSequenceList(Sequence newGatingConsumerSequence) {
         this.gatingConsumerSequenceList.add(newGatingConsumerSequence);
+    }
+
+    public void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences) {
+        this.gatingConsumerSequenceList.addAll(Arrays.asList(newGatingConsumerSequences));
     }
 
     // =============================================================================

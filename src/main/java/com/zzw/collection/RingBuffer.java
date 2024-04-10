@@ -54,6 +54,8 @@ public class RingBuffer<T> {
         return elementList[index];
     }
 
+    // =============================================================================
+
     public long next() {
         return this.singleProducerSequencer.next();
     }
@@ -66,9 +68,23 @@ public class RingBuffer<T> {
         this.singleProducerSequencer.publish(index);
     }
 
+    // ----------------------------------------
+
+    public Sequence getCurrentProducerSequence() {
+        return this.singleProducerSequencer.getCurrentProducerSequence();
+    }
+
+    // ----------------------------------------
+
     public void addGatingConsumerSequenceList(Sequence consumerSequence) {
         this.singleProducerSequencer.addGatingConsumerSequenceList(consumerSequence);
     }
+
+    public void addGatingConsumerSequenceList(Sequence... consumerSequences) {
+        this.singleProducerSequencer.addGatingConsumerSequenceList(consumerSequences);
+    }
+
+    // ----------------------------------------
 
     public SequenceBarrier newBarrier() {
         return this.singleProducerSequencer.newBarrier();
