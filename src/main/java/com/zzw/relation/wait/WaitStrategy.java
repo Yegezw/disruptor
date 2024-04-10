@@ -1,0 +1,23 @@
+package com.zzw.relation.wait;
+
+import com.zzw.relation.Sequence;
+
+/**
+ * 消费者等待策略
+ */
+public interface WaitStrategy {
+
+    /**
+     * 等待给定的序号可供使用, 由消费者调用
+     *
+     * @param currentConsumeSequence  下一个需要消费的序号
+     * @param currentProducerSequence 生产序号
+     * @return 最大可消费序号
+     */
+    long waitFor(long currentConsumeSequence, Sequence currentProducerSequence) throws InterruptedException;
+
+    /**
+     * 唤醒 waitFor 阻塞在该等待策略对象上的消费者线程, 由生产者调用
+     */
+    void signalWhenBlocking();
+}
