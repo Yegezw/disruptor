@@ -66,11 +66,15 @@ public class RingBuffer<T> {
         this.singleProducerSequencer.publish(index);
     }
 
-    public void setConsumerSequence(Sequence consumerSequence) {
-        this.singleProducerSequencer.setConsumerSequence(consumerSequence);
+    public void addGatingConsumerSequenceList(Sequence consumerSequence) {
+        this.singleProducerSequencer.addGatingConsumerSequenceList(consumerSequence);
     }
 
     public SequenceBarrier newBarrier() {
         return this.singleProducerSequencer.newBarrier();
+    }
+
+    public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
+        return this.singleProducerSequencer.newBarrier(dependenceSequences);
     }
 }
