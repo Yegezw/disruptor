@@ -1,5 +1,6 @@
 package com.zzw.relation;
 
+import com.zzw.producer.Sequencer;
 import com.zzw.relation.wait.WaitStrategy;
 
 import java.util.Collections;
@@ -11,7 +12,13 @@ import java.util.List;
 public class SequenceBarrier {
 
     /**
-     * 生产序号
+     * "单线程 OR 多线程" 生产者序号生成器
+     */
+    private final Sequencer producerSequencer;
+    /**
+     * <p>生产序号
+     * <p>单线程下表示: 当前生产序号(已发布)
+     * <p>多线程下表示: 多线程共同的已申请序号(可能未发布)
      */
     private final Sequence currentProducerSequence;
     private final WaitStrategy waitStrategy;
@@ -20,7 +27,11 @@ public class SequenceBarrier {
      */
     private final List<Sequence> dependentSequencesList;
 
-    public SequenceBarrier(Sequence currentProducerSequence, WaitStrategy waitStrategy, List<Sequence> dependentSequencesList) {
+    public SequenceBarrier(Sequencer producerSequencer,
+                           Sequence currentProducerSequence,
+                           WaitStrategy waitStrategy,
+                           List<Sequence> dependentSequencesList) {
+        this.producerSequencer = producerSequencer;
         this.currentProducerSequence = currentProducerSequence;
         this.waitStrategy = waitStrategy;
         if (!dependentSequencesList.isEmpty()) {
@@ -38,7 +49,13 @@ public class SequenceBarrier {
      * @return 最大可消费序号
      */
     public long getAvailableConsumeSequence(long currentConsumeSequence) throws InterruptedException {
-        // v1 版本只是简单的调用 waitFor, 等待其返回即可
-        return this.waitStrategy.waitFor(currentConsumeSequence, currentProducerSequence, dependentSequencesList);
+        long availableSequence = waitStrategy.waitFor(currentConsumeSequence, currentProducerSequence, dependentSequencesList);
+
+        if (availableSequence < currentConsumeSequence) {
+            return availableSequence;
+        }
+
+        // 多线程生产者中, 需要进一步约束(于 v4 版本新增)
+        return producerSequencer.getHighestPublishedSequence(currentConsumeSequence, availableSequence);
     }
 }

@@ -69,12 +69,12 @@ public class SingleProducerSequencer implements Sequencer {
 
     @Override
     public SequenceBarrier newBarrier() {
-        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>());
+        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new ArrayList<>());
     }
 
     @Override
     public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
-        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
+        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
     }
 
     @Override
