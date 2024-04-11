@@ -3,7 +3,7 @@ package com.zzw.consumer;
 import com.zzw.collection.OrderEvent;
 
 /**
- * 订单事件处理器
+ * 订单事件处理器(单线程消费者)
  */
 public class OrderEventHandler implements EventHandler<OrderEvent> {
 

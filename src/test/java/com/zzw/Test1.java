@@ -9,7 +9,7 @@ import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.BlockingWaitStrategy;
 
-public class Test {
+public class Test1 {
 
     //                   / -> C -> E
     // Event -> [A & B] -
@@ -32,7 +32,7 @@ public class Test {
                 ringBuffer,
                 new OrderEventHandler("consumerA"),
                 sequenceBarrier);
-        // RingBuffer 监听消费者 A 的序列, 用于控制生产速度
+        // RingBuffer 监听消费者 A 的序号, 用于控制生产速度
         Sequence consumeSequenceA = eventProcessorA.getCurrentConsumeSequence();
         ringBuffer.addGatingConsumerSequenceList(consumeSequenceA);
 
@@ -41,7 +41,7 @@ public class Test {
                 ringBuffer,
                 new OrderEventHandler("consumerB"),
                 sequenceBarrier);
-        // RingBuffer 监听消费者 B 的序列, 用于控制生产速度
+        // RingBuffer 监听消费者 B 的序号, 用于控制生产速度
         Sequence consumeSequenceB = eventProcessorB.getCurrentConsumeSequence();
         ringBuffer.addGatingConsumerSequenceList(consumeSequenceB);
 
@@ -55,7 +55,7 @@ public class Test {
                 ringBuffer,
                 new OrderEventHandler("consumerC"),
                 sequenceBarrierAB);
-        // RingBuffer 监听消费者 C 的序列, 用于控制生产速度
+        // RingBuffer 监听消费者 C 的序号, 用于控制生产速度
         Sequence consumeSequenceC = eventProcessorC.getCurrentConsumeSequence();
         ringBuffer.addGatingConsumerSequenceList(consumeSequenceC);
 
@@ -64,7 +64,7 @@ public class Test {
                 ringBuffer,
                 new OrderEventHandler("consumerD"),
                 sequenceBarrierAB);
-        // RingBuffer 监听消费者 D 的序列, 用于控制生产速度
+        // RingBuffer 监听消费者 D 的序号, 用于控制生产速度
         Sequence consumeSequenceD = eventProcessorD.getCurrentConsumeSequence();
         ringBuffer.addGatingConsumerSequenceList(consumeSequenceD);
 
@@ -78,7 +78,7 @@ public class Test {
                 ringBuffer,
                 new OrderEventHandler("consumerE"),
                 sequenceBarrierC);
-        // RingBuffer 监听消费者 E 的序列, 用于控制生产速度
+        // RingBuffer 监听消费者 E 的序号, 用于控制生产速度
         Sequence consumeSequenceE = eventProcessorE.getCurrentConsumeSequence();
         ringBuffer.addGatingConsumerSequenceList(consumeSequenceE);
 
@@ -92,7 +92,7 @@ public class Test {
                 ringBuffer,
                 new OrderEventHandler("consumerF"),
                 sequenceBarrierD);
-        // RingBuffer 监听消费者 F 的序列, 用于控制生产速度
+        // RingBuffer 监听消费者 F 的序号, 用于控制生产速度
         Sequence consumeSequenceF = eventProcessorF.getCurrentConsumeSequence();
         ringBuffer.addGatingConsumerSequenceList(consumeSequenceF);
 
@@ -101,7 +101,7 @@ public class Test {
                 ringBuffer,
                 new OrderEventHandler("consumerG"),
                 sequenceBarrierD);
-        // RingBuffer 监听消费者 G 的序列, 用于控制生产速度
+        // RingBuffer 监听消费者 G 的序号, 用于控制生产速度
         Sequence consumeSequenceG = eventProcessorG.getCurrentConsumeSequence();
         ringBuffer.addGatingConsumerSequenceList(consumeSequenceG);
 
