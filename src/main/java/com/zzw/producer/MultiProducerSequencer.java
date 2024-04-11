@@ -167,6 +167,7 @@ public class MultiProducerSequencer implements Sequencer {
     @Override
     public void publish(long publishIndex) {
         setAvailable(publishIndex);
+        System.out.println(Thread.currentThread().getName() + " 生产者发布事件序号: " + publishIndex); // TODO 为了测试
         waitStrategy.signalWhenBlocking();
     }
 
