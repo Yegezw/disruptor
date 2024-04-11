@@ -11,7 +11,7 @@ import com.zzw.relation.wait.WaitStrategy;
 public class RingBuffer<T> {
 
     private final T[] elementList;
-    private final int ringBufferSize;
+    private final int bufferSize;
     private final int mask;
 
     // ----------------------------------------
@@ -29,20 +29,27 @@ public class RingBuffer<T> {
     }
 
     public RingBuffer(SingleProducerSequencer singleProducerSequencer, EventFactory<T> eventFactory) {
-        int bufferSize = singleProducerSequencer.getRingBufferSize();
+        int bufferSize = singleProducerSequencer.getBufferSize();
         if (Integer.bitCount(bufferSize) != 1) {
             // ringBufferSize 需要是 2 的倍数, 类似 HashMap, 求余数时效率更高
             throw new IllegalArgumentException("BufferSize must be a power of 2");
         }
 
         this.elementList = (T[]) new Object[bufferSize];
-        this.ringBufferSize = bufferSize;
-        this.mask = ringBufferSize - 1;
+        this.bufferSize = bufferSize;
+        this.mask = bufferSize - 1;
         this.singleProducerSequencer = singleProducerSequencer;
 
-        // 预填充事件对象, 后续生产者和消费者都只会更新事件对象, 不会发生插入、删除等操作, 避免 GC
-        for (int i = 0; i < this.elementList.length; i++) {
-            this.elementList[i] = eventFactory.newInstance();
+        fill(eventFactory);
+    }
+
+    /**
+     * <p>预填充事件对象
+     * <p>后续生产者和消费者都只会更新事件对象, 不会发生插入、删除等操作, 避免 GC
+     */
+    private void fill(EventFactory<T> eventFactory) {
+        for (int i = 0; i < bufferSize; i++) {
+            elementList[i] = eventFactory.newInstance();
         }
     }
 
@@ -56,41 +63,39 @@ public class RingBuffer<T> {
 
     // =============================================================================
 
-    public long next() {
-        return this.singleProducerSequencer.next();
-    }
-
-    public long next(int n) {
-        return this.singleProducerSequencer.next(n);
-    }
-
-    public void publish(Long index) {
-        this.singleProducerSequencer.publish(index);
-    }
-
-    // ----------------------------------------
-
     public Sequence getCurrentProducerSequence() {
-        return this.singleProducerSequencer.getCurrentProducerSequence();
-    }
-
-    // ----------------------------------------
-
-    public void addGatingConsumerSequenceList(Sequence consumerSequence) {
-        this.singleProducerSequencer.addGatingConsumerSequenceList(consumerSequence);
-    }
-
-    public void addGatingConsumerSequenceList(Sequence... consumerSequences) {
-        this.singleProducerSequencer.addGatingConsumerSequenceList(consumerSequences);
+        return singleProducerSequencer.getCurrentProducerSequence();
     }
 
     // ----------------------------------------
 
     public SequenceBarrier newBarrier() {
-        return this.singleProducerSequencer.newBarrier();
+        return singleProducerSequencer.newBarrier();
     }
 
     public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
-        return this.singleProducerSequencer.newBarrier(dependenceSequences);
+        return singleProducerSequencer.newBarrier(dependenceSequences);
+    }
+
+    public void addGatingConsumerSequenceList(Sequence consumerSequence) {
+        singleProducerSequencer.addGatingConsumerSequenceList(consumerSequence);
+    }
+
+    public void addGatingConsumerSequenceList(Sequence... consumerSequences) {
+        singleProducerSequencer.addGatingConsumerSequenceList(consumerSequences);
+    }
+
+    // ----------------------------------------
+
+    public long next() {
+        return singleProducerSequencer.next();
+    }
+
+    public long next(int n) {
+        return singleProducerSequencer.next(n);
+    }
+
+    public void publish(Long index) {
+        singleProducerSequencer.publish(index);
     }
 }

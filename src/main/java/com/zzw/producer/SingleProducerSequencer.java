@@ -2,7 +2,7 @@ package com.zzw.producer;
 
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
-import com.zzw.relation.SequenceUtil;
+import com.zzw.util.SequenceUtil;
 import com.zzw.relation.wait.WaitStrategy;
 import lombok.Getter;
 
@@ -22,7 +22,7 @@ public class SingleProducerSequencer {
      * 生产者序号生成器所属 RingBuffer 的大小
      */
     @Getter
-    private final int ringBufferSize;
+    private final int bufferSize;
     /**
      * <p>已申请的序号(是否发布了, 要看 currentProducerSequence)
      * <p>单线程生产者内部使用, 所以就是普通的 long, 不考虑并发
@@ -53,25 +53,25 @@ public class SingleProducerSequencer {
 
     // =============================================================================
 
-    public SingleProducerSequencer(int ringBufferSize, WaitStrategy WaitStrategy) {
-        this.ringBufferSize = ringBufferSize;
+    public SingleProducerSequencer(int bufferSize, WaitStrategy WaitStrategy) {
+        this.bufferSize = bufferSize;
         this.waitStrategy = WaitStrategy;
     }
 
     public SequenceBarrier newBarrier() {
-        return new SequenceBarrier(this.currentProducerSequence, this.waitStrategy, new ArrayList<>());
+        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>());
     }
 
     public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
-        return new SequenceBarrier(this.currentProducerSequence, this.waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
+        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
     }
 
     public void addGatingConsumerSequenceList(Sequence newGatingConsumerSequence) {
-        this.gatingConsumerSequenceList.add(newGatingConsumerSequence);
+        gatingConsumerSequenceList.add(newGatingConsumerSequence);
     }
 
     public void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences) {
-        this.gatingConsumerSequenceList.addAll(Arrays.asList(newGatingConsumerSequences));
+        gatingConsumerSequenceList.addAll(Arrays.asList(newGatingConsumerSequences));
     }
 
     // =============================================================================
@@ -92,7 +92,7 @@ public class SingleProducerSequencer {
         // 目标生产序号
         long nextProducerSequence = nextValue + n;
         // 上一轮覆盖点 <= 消费序号
-        long wrapPoint = nextProducerSequence - this.ringBufferSize;
+        long wrapPoint = nextProducerSequence - bufferSize;
 
         // 获得当前已缓存的消费序号
         long cachedGatingSequence = this.cachedConsumerSequenceValue;
@@ -133,9 +133,9 @@ public class SingleProducerSequencer {
         // 发布时, 更新生产者队列
         // lazySet 保证 publish() 执行前, 生产者对事件对象更新的写操作, 一定先于对生产者 Sequence 的更新
         // lazySet 由于消费者可以批量的拉取数据, 所以不必每次发布时都 volatile 的更新, 允许消费者晚一点感知到, 这样性能会更好
-        this.currentProducerSequence.lazySet(publishIndex);
+        currentProducerSequence.lazySet(publishIndex);
 
         // 发布完成后, 唤醒可能阻塞等待的消费者线程
-        this.waitStrategy.signalWhenBlocking();
+        waitStrategy.signalWhenBlocking();
     }
 }

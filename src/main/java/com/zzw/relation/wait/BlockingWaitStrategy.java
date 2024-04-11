@@ -1,7 +1,7 @@
 package com.zzw.relation.wait;
 
 import com.zzw.relation.Sequence;
-import com.zzw.relation.SequenceUtil;
+import com.zzw.util.SequenceUtil;
 
 import java.util.List;
 import java.util.concurrent.locks.Condition;

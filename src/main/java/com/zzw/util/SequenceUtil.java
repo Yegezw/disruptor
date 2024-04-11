@@ -1,4 +1,6 @@
-package com.zzw.relation;
+package com.zzw.util;
+
+import com.zzw.relation.Sequence;
 
 import java.util.List;
 

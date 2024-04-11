@@ -1,8 +1,7 @@
 package com.zzw.relation;
 
+import com.zzw.util.Util;
 import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
 
 /**
  * <p>序号对象
@@ -21,10 +20,8 @@ public class Sequence {
     private static final long VALUE_OFFSET;
 
     static {
+        UNSAFE = Util.getUnsafe();
         try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            UNSAFE = (Unsafe) theUnsafe.get(null);
             VALUE_OFFSET = UNSAFE.objectFieldOffset(Sequence.class.getDeclaredField("value"));
         } catch (final Exception e) {
             throw new RuntimeException(e);
