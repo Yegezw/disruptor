@@ -51,7 +51,6 @@ public class BlockingWaitStrategy implements WaitStrategy {
             // 用来控制当前消费者的消费进度 <= 其依赖的上游消费者的消费者进度
             while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequenceList)) < currentConsumeSequence) {
                 // 由于消费者消费速度一般会很快, 所以这里使用自旋阻塞来等待上游消费者进度推进(响应及时且实现简单)
-
                 // 在 JDK 9 开始引入的 Thread.onSpinWait 方法, 优化自旋性能
                 ThreadHints.onSpinWait();
             }
