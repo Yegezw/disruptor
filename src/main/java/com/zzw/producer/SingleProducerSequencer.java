@@ -2,9 +2,8 @@ package com.zzw.producer;
 
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
-import com.zzw.util.SequenceUtil;
 import com.zzw.relation.wait.WaitStrategy;
-import lombok.Getter;
+import com.zzw.util.SequenceUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,12 +15,11 @@ import java.util.concurrent.locks.LockSupport;
  * <p>只支持单消费者的简易版本(只有一个 consumerSequence)
  * <p>因为是单线程序号生成器, 因此在设计上就是线程不安全的
  */
-public class SingleProducerSequencer {
+public class SingleProducerSequencer implements Sequencer {
 
     /**
      * 生产者序号生成器所属 RingBuffer 的大小
      */
-    @Getter
     private final int bufferSize;
     /**
      * <p>已申请的序号(是否发布了, 要看 currentProducerSequence)
@@ -31,7 +29,6 @@ public class SingleProducerSequencer {
     /**
      * 当前已发布的生产序号(区别于 nextValue)
      */
-    @Getter
     private final Sequence currentProducerSequence = new Sequence();
 
     // ----------------------------------------
@@ -58,34 +55,51 @@ public class SingleProducerSequencer {
         this.waitStrategy = WaitStrategy;
     }
 
-    public SequenceBarrier newBarrier() {
-        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>());
+    @Override
+    public int getBufferSize() {
+        return bufferSize;
     }
 
-    public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
-        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
-    }
-
-    public void addGatingConsumerSequenceList(Sequence newGatingConsumerSequence) {
-        gatingConsumerSequenceList.add(newGatingConsumerSequence);
-    }
-
-    public void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences) {
-        gatingConsumerSequenceList.addAll(Arrays.asList(newGatingConsumerSequences));
+    @Override
+    public Sequence getCurrentProducerSequence() {
+        return currentProducerSequence;
     }
 
     // =============================================================================
 
-    /**
-     * 一次性申请可用的 1 个生产序号
-     */
+    @Override
+    public SequenceBarrier newBarrier() {
+        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>());
+    }
+
+    @Override
+    public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
+        return new SequenceBarrier(currentProducerSequence, waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
+    }
+
+    @Override
+    public void addGatingConsumerSequence(Sequence newGatingConsumerSequence) {
+        gatingConsumerSequenceList.add(newGatingConsumerSequence);
+    }
+
+    @Override
+    public void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences) {
+        gatingConsumerSequenceList.addAll(Arrays.asList(newGatingConsumerSequences));
+    }
+
+    @Override
+    public void removeGatingConsumerSequence(Sequence sequenceNeedRemove) {
+        gatingConsumerSequenceList.remove(sequenceNeedRemove);
+    }
+
+    // =============================================================================
+
+    @Override
     public long next() {
         return next(1);
     }
 
-    /**
-     * 一次性申请可用的 n 个生产序号
-     */
+    @Override
     public long next(int n) {
         long nextValue = this.nextValue; // 已申请序号
 
@@ -129,6 +143,7 @@ public class SingleProducerSequencer {
         return nextProducerSequence;
     }
 
+    @Override
     public void publish(long publishIndex) {
         // 发布时, 更新生产者队列
         // lazySet 保证 publish() 执行前, 生产者对事件对象更新的写操作, 一定先于对生产者 Sequence 的更新
@@ -137,5 +152,12 @@ public class SingleProducerSequencer {
 
         // 发布完成后, 唤醒可能阻塞等待的消费者线程
         waitStrategy.signalWhenBlocking();
+    }
+
+    // =============================================================================
+
+    @Override
+    public long getHighestPublishedSequence(long nextSequence, long availableSequence) {
+        return availableSequence;
     }
 }
