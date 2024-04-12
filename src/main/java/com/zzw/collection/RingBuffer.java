@@ -20,6 +20,14 @@ public class RingBuffer<E> {
 
     // ----------------------------------------
 
+    /**
+     * 填充个数: 32 * 4 = 128 bytes
+     */
+    private static final int BUFFER_PAD = 32;
+    /**
+     * <p>环形数组
+     * <p>数组对象头｜填充的 128 个无效字节｜有效数据(引用)｜填充的 128 个无效字节
+     */
     private final E[] elementList;
     private final int bufferSize;
     private final int mask;
@@ -74,6 +82,7 @@ public class RingBuffer<E> {
         return new RingBuffer<>(sequencer, factory);
     }
 
+    @SuppressWarnings("unchecked")
     public RingBuffer(Sequencer producerSequencer, EventFactory<E> eventFactory) {
         int bufferSize = producerSequencer.getBufferSize();
         if (Integer.bitCount(bufferSize) != 1) {
@@ -81,7 +90,8 @@ public class RingBuffer<E> {
             throw new IllegalArgumentException("BufferSize must be a power of 2");
         }
 
-        this.elementList = (E[]) new Object[bufferSize];
+        // 保证数组的有效数据(引用)不会与其它数据位于同一缓存行, 避免伪共享
+        this.elementList = (E[]) new Object[bufferSize + 2 * BUFFER_PAD];
         this.bufferSize = bufferSize;
         this.mask = bufferSize - 1;
         this.producerSequencer = producerSequencer;
@@ -91,11 +101,13 @@ public class RingBuffer<E> {
 
     /**
      * <p>预填充事件对象
-     * <p>后续生产者和消费者都只会更新事件对象, 不会发生插入、删除等操作, 避免 GC
+     * <p>数组中的对象可以一直复用, 在一定程度上减少垃圾回收, 但是该对象中封装的对象仍然会被垃圾回收
      */
     private void fill(EventFactory<E> eventFactory) {
         for (int i = 0; i < bufferSize; i++) {
-            elementList[i] = eventFactory.newInstance();
+            // 数组第一个有效数据的索引是 BUFFER_PAD
+            // for 循环创建数组中的对象, 可以让这些对象在堆内存中的地址尽可能的连续一点
+            elementList[BUFFER_PAD + i] = eventFactory.newInstance();
         }
     }
 
@@ -104,7 +116,7 @@ public class RingBuffer<E> {
     public E get(long sequence) {
         // 由于 ringBuffer 的长度是 2 次幂, mask 为 2 次幂 - 1, 因此可以将求余运算优化为位运算
         int index = (int) (sequence & mask);
-        return elementList[index];
+        return elementList[BUFFER_PAD + index];
     }
 
     // =============================================================================
