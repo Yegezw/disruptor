@@ -1,5 +1,6 @@
 package com.zzw.collection;
 
+import com.zzw.collection.dsl.producer.ProducerType;
 import com.zzw.producer.MultiProducerSequencer;
 import com.zzw.producer.Sequencer;
 import com.zzw.producer.SingleProducerSequencer;
@@ -24,6 +25,30 @@ public class RingBuffer<E> {
     private final Sequencer producerSequencer;
 
     // =============================================================================
+
+    /**
+     * 创建 RingBuffer
+     *
+     * @param producerType 生产者类型(单线程生产者 OR 多线程生产者)
+     * @param eventFactory 用户自定义的事件工厂
+     * @param bufferSize   ringBuffer 容量
+     * @param waitStrategy 指定的消费者阻塞策略
+     */
+    public static <E> RingBuffer<E> create(ProducerType producerType,
+                                           EventFactory<E> eventFactory,
+                                           int bufferSize,
+                                           WaitStrategy waitStrategy) {
+        switch (producerType) {
+            case SINGLE: {
+                return createSingleProducer(eventFactory, bufferSize, waitStrategy);
+            }
+            case MULTI: {
+                return createMultiProducer(eventFactory, bufferSize, waitStrategy);
+            }
+            default:
+                throw new RuntimeException("Un support producerType: " + producerType);
+        }
+    }
 
     public static <E> RingBuffer<E> createSingleProducer(EventFactory<E> factory, int bufferSize, WaitStrategy waitStrategy) {
         SingleProducerSequencer sequencer = new SingleProducerSequencer(bufferSize, waitStrategy);
