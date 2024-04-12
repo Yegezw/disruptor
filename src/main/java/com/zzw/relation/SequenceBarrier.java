@@ -1,6 +1,7 @@
 package com.zzw.relation;
 
 import com.zzw.producer.Sequencer;
+import com.zzw.relation.wait.AlertException;
 import com.zzw.relation.wait.WaitStrategy;
 
 import java.util.Collections;
@@ -26,6 +27,7 @@ public class SequenceBarrier {
      */
     private final List<Sequence> dependentSequencesList;
     private final WaitStrategy waitStrategy;
+    private volatile boolean alerted = false;
 
     public SequenceBarrier(Sequencer producerSequencer,
                            Sequence currentProducerSequence,
@@ -42,14 +44,18 @@ public class SequenceBarrier {
         }
     }
 
+    // =============================================================================
+
     /**
      * 等待给定的序号可供使用
      *
      * @param currentConsumeSequence 下一个需要消费的序号
      * @return 最大可消费序号
      */
-    public long getAvailableConsumeSequence(long currentConsumeSequence) throws InterruptedException {
-        long availableSequence = waitStrategy.waitFor(currentConsumeSequence, currentProducerSequence, dependentSequencesList);
+    public long getAvailableConsumeSequence(long currentConsumeSequence) throws InterruptedException, AlertException {
+        checkAlert(); // 每次都检查下是否被唤醒, 被唤醒则会抛出 AlertException, 代表当前的消费者线程要终止运行了
+
+        long availableSequence = waitStrategy.waitFor(currentConsumeSequence, currentProducerSequence, dependentSequencesList, this);
 
         if (availableSequence < currentConsumeSequence) {
             return availableSequence;
@@ -57,5 +63,31 @@ public class SequenceBarrier {
 
         // 多线程生产者中, 需要进一步约束(于 v4 版本新增)
         return producerSequencer.getHighestPublishedSequence(currentConsumeSequence, availableSequence);
+    }
+
+    // =============================================================================
+
+    /**
+     * 唤醒阻塞在 waitStrategy 的消费者线程
+     */
+    public void alert() {
+        alerted = true;
+        waitStrategy.signalWhenBlocking();
+    }
+
+    /**
+     * 重新启动时清除被唤醒标记
+     */
+    public void clearAlert() {
+        alerted = false;
+    }
+
+    /**
+     * 检查是否被唤醒, 如果被唤醒则抛出 AlertException 异常
+     */
+    public void checkAlert() throws AlertException {
+        if (alerted) {
+            throw AlertException.INSTANCE;
+        }
     }
 }

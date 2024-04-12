@@ -3,6 +3,7 @@ package com.zzw.consumer;
 import com.zzw.collection.RingBuffer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
+import com.zzw.relation.wait.AlertException;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -55,6 +56,7 @@ public class WorkProcessor<T> implements EventProcessor {
         if (!running.compareAndSet(false, true)) {
             throw new IllegalStateException("Thread is already running");
         }
+        sequenceBarrier.clearAlert();
 
         // 下一个需要消费的序号
         long nextConsumerIndex = this.currentConsumeSequence.get() + 1;
@@ -112,7 +114,14 @@ public class WorkProcessor<T> implements EventProcessor {
                 } else {
                     // 1、第一次循环, 获取当前序号屏障的最大可消费序号
                     // 2、非第一次循环, 说明争抢到的序号 > "缓存的最大可消费序号", 等待 "生产者/上游消费者" 推进到争抢到的 nextConsumerIndex
+                    // 可能会抛出 AlertException 异常
                     cachedAvailableSequence = sequenceBarrier.getAvailableConsumeSequence(nextConsumerIndex);
+                }
+            } catch (final AlertException ex) {
+                // 被外部 alert 打断, 检查 running 标记
+                // running == false, break 跳出主循环, 运行结束
+                if (!running.get()) {
+                    break;
                 }
             } catch (final Throwable ex) {
                 // 消费者消费时发生了异常, 也认为是成功消费了, 下次循环会 CAS 争抢一个新的消费序号
@@ -124,6 +133,7 @@ public class WorkProcessor<T> implements EventProcessor {
     @Override
     public void halt() {
         running.set(false);
+        sequenceBarrier.alert(); // 唤醒消费者线程(令其能立即检查到状态为停止)
     }
 
     @Override

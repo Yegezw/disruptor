@@ -1,6 +1,7 @@
 package com.zzw.relation.wait;
 
 import com.zzw.relation.Sequence;
+import com.zzw.relation.SequenceBarrier;
 import com.zzw.util.SequenceUtil;
 
 import java.util.List;
@@ -28,13 +29,17 @@ public class BlockingWaitStrategy implements WaitStrategy {
     @Override
     public long waitFor(long currentConsumeSequence,
                         Sequence currentProducerSequence,
-                        List<Sequence> dependentSequenceList) throws InterruptedException {
+                        List<Sequence> dependentSequenceList,
+                        SequenceBarrier barrier) throws InterruptedException, AlertException {
         // 如果 ringBuffer 的生产序号 < 当前所需消费序号, 说明目前消费速度 > 生产速度
         // 强一致的读生产序号, 看看生产者的生产进度是否推进了
         if (currentProducerSequence.get() < currentConsumeSequence) {
             lock.lock();
             try {
                 while (currentProducerSequence.get() < currentConsumeSequence) {
+                    // 每次循环都检查运行状态(被锁保护, 不会出现丢失 signal 信号的问题)
+                    barrier.checkAlert();
+
                     // 消费速度 > 生产速度, 阻塞等待
                     processorNotifyCondition.await();
                 }
@@ -50,6 +55,9 @@ public class BlockingWaitStrategy implements WaitStrategy {
             // 受制于屏障中的 dependentSequenceList
             // 用来控制当前消费者的消费进度 <= 其依赖的上游消费者的消费者进度
             while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequenceList)) < currentConsumeSequence) {
+                // 每次循环都检查运行状态
+                barrier.checkAlert();
+
                 // 由于消费者消费速度一般会很快, 所以这里使用自旋阻塞来等待上游消费者进度推进(响应及时且实现简单)
                 // 在 JDK 9 开始引入的 Thread.onSpinWait 方法, 优化自旋性能
                 ThreadHints.onSpinWait();

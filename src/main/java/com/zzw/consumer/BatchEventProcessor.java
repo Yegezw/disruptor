@@ -3,6 +3,7 @@ package com.zzw.consumer;
 import com.zzw.collection.RingBuffer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
+import com.zzw.relation.wait.AlertException;
 import com.zzw.util.Util;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -49,6 +50,7 @@ public class BatchEventProcessor<T> implements EventProcessor {
         if (!running.compareAndSet(false, true)) {
             throw new IllegalStateException("Thread is already running");
         }
+        sequenceBarrier.clearAlert();
 
         // 下一个需要消费的序号
         long nextConsumerIndex = currentConsumeSequence.get() + 1;
@@ -58,6 +60,7 @@ public class BatchEventProcessor<T> implements EventProcessor {
             Util.sleep(200); // 为了测试, 让消费者慢一点
 
             try {
+                // 可能会抛出 AlertException 异常
                 long availableConsumeIndex = this.sequenceBarrier.getAvailableConsumeSequence(nextConsumerIndex);
 
                 while (nextConsumerIndex <= availableConsumeIndex) {
@@ -72,6 +75,12 @@ public class BatchEventProcessor<T> implements EventProcessor {
                 // lazySet 保证消费者对事件对象的读操作, 一定先于对消费者 Sequence 的更新
                 // lazySet 不需要生产者实时的强感知, 这样性能更好, 因为生产者自己也不是实时的读消费者序号的
                 this.currentConsumeSequence.lazySet(availableConsumeIndex);
+            } catch (final AlertException ex) {
+                // 被外部 alert 打断, 检查 running 标记
+                // running == false, break 跳出主循环, 运行结束
+                if (!running.get()) {
+                    break;
+                }
             } catch (final Throwable ex) {
                 // 发生异常, 消费进度依然推进(跳过这一批拉取的数据)
                 this.currentConsumeSequence.lazySet(nextConsumerIndex);
@@ -83,6 +92,7 @@ public class BatchEventProcessor<T> implements EventProcessor {
     @Override
     public void halt() {
         running.set(false);
+        sequenceBarrier.alert(); // 唤醒消费者线程(令其能立即检查到状态为停止)
     }
 
     @Override
