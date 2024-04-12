@@ -13,4 +13,11 @@ public interface EventProcessor extends Runnable {
      * @return 消费序号
      */
     Sequence getCurrentConsumeSequence();
+
+    /**
+     * 停止当前消费者线程
+     */
+    void halt();
+
+    boolean isRunning();
 }

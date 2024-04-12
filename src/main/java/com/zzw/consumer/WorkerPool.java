@@ -7,6 +7,7 @@ import com.zzw.relation.SequenceBarrier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 多线程消费者池
@@ -14,6 +15,7 @@ import java.util.concurrent.Executor;
 public class WorkerPool<T> {
 
     private final RingBuffer<T> ringBuffer;
+    private final AtomicBoolean started = new AtomicBoolean(false);
 
     // ----------------------------------------
 
@@ -64,6 +66,10 @@ public class WorkerPool<T> {
      * 启动多线程消费者
      */
     public RingBuffer<T> start(final Executor executor) {
+        if (!started.compareAndSet(false, true)) {
+            throw new IllegalStateException("WorkerPool 已经被启动, 在被停止前无法再次启动");
+        }
+
         // 生产者序号
         final long cursor = ringBuffer.getCurrentProducerSequence().get();
 
@@ -77,5 +83,18 @@ public class WorkerPool<T> {
         }
 
         return this.ringBuffer;
+    }
+
+    public void halt() {
+        for (WorkProcessor<?> processor : workProcessorList) {
+            // 挨个停止所有工作线程
+            processor.halt();
+        }
+
+        started.set(false);
+    }
+
+    public boolean isRunning() {
+        return started.get();
     }
 }

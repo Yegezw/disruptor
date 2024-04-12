@@ -5,6 +5,8 @@ import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.util.Util;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * 单线程消费者
  */
@@ -12,6 +14,7 @@ public class BatchEventProcessor<T> implements EventProcessor {
 
     private final RingBuffer<T> ringBuffer;
     private final EventHandler<T> eventConsumer;
+    private final AtomicBoolean running = new AtomicBoolean(false);
 
     // ----------------------------------------
 
@@ -43,6 +46,10 @@ public class BatchEventProcessor<T> implements EventProcessor {
 
     @Override
     public void run() {
+        if (!running.compareAndSet(false, true)) {
+            throw new IllegalStateException("Thread is already running");
+        }
+
         // 下一个需要消费的序号
         long nextConsumerIndex = currentConsumeSequence.get() + 1;
 
@@ -71,5 +78,15 @@ public class BatchEventProcessor<T> implements EventProcessor {
                 nextConsumerIndex++;
             }
         }
+    }
+
+    @Override
+    public void halt() {
+        running.set(false);
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running.get();
     }
 }

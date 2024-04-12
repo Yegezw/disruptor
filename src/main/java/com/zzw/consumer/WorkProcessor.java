@@ -4,6 +4,8 @@ import com.zzw.collection.RingBuffer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * 多线程消费者的工作线程
  */
@@ -15,6 +17,7 @@ public class WorkProcessor<T> implements EventProcessor {
      * 消费序号
      */
     private final Sequence currentConsumeSequence = new Sequence(-1);
+    private final AtomicBoolean running = new AtomicBoolean(false);
 
     // ----------------------------------------
 
@@ -49,6 +52,10 @@ public class WorkProcessor<T> implements EventProcessor {
 
     @Override
     public void run() {
+        if (!running.compareAndSet(false, true)) {
+            throw new IllegalStateException("Thread is already running");
+        }
+
         // 下一个需要消费的序号
         long nextConsumerIndex = this.currentConsumeSequence.get() + 1;
 
@@ -112,5 +119,15 @@ public class WorkProcessor<T> implements EventProcessor {
                 processedSequence = true;
             }
         }
+    }
+
+    @Override
+    public void halt() {
+        running.set(false);
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running.get();
     }
 }
