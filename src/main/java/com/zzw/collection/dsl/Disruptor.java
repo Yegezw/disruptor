@@ -14,6 +14,7 @@ import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.WaitStrategy;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -182,5 +183,56 @@ public class Disruptor<T> {
             // 向生产者添加多个需要监控的消费序号 processorSequences
             ringBuffer.addGatingConsumerSequenceList(processorSequences);
         }
+
+        // 将 barrierSequences 所属的 ConsumerInfo.endOfChain 标记为 "非最尾端的消费者"(用于 shutdown 优雅停止)
+        consumerRepository.unMarkEventProcessorsAsEndOfChain(barrierSequences);
+    }
+
+    // =============================================================================
+
+    /**
+     * 停止所有消费者线程
+     */
+    public void halt() {
+        for (final ConsumerInfo consumerInfo : consumerRepository.getConsumerInfos()) {
+            consumerInfo.halt();
+        }
+    }
+
+    /**
+     * 等所有消费者线程 "把已生产的事件全部消费完成" 后, 再停止所有消费者线程
+     */
+    public void shutdown(long timeout, TimeUnit timeUnit) {
+        final long timeOutAt = System.currentTimeMillis() + timeUnit.toMillis(timeout);
+
+        while (hasBacklog()) {
+            if (timeout >= 0 && System.currentTimeMillis() > timeOutAt) {
+                throw new RuntimeException("disruptor shutdown 操作, 等待超时");
+            }
+            // Busy spin
+        }
+
+        // hasBacklog 为 false, 跳出了循环
+        // 说明已生产的事件全部消费完成了, 此时可以安全的优雅停止所有消费者线程了
+        halt();
+    }
+
+    /**
+     * 判断最尾端消费者线程 "是否还有未消费完的事件"
+     */
+    private boolean hasBacklog() {
+        final long cursor = ringBuffer.getCurrentProducerSequence().get();
+
+        // 获取所有处于最尾端的消费者序号(最尾端的是最慢的, 所以是准确的)
+        for (final Sequence consumer : consumerRepository.getLastSequenceInChain()) {
+            if (cursor > consumer.get()) {
+                // 如果任意一个消费序号 < 当前生产序号, 说明存在未消费完的事件, 返回 true
+                return true;
+            }
+        }
+
+        // 所有 "最尾端消费者线程的序号" >= "生产序号"
+        // 说明所有消费者线程都已经 "把已生产的事件全部消费完成", 返回 false
+        return false;
     }
 }
