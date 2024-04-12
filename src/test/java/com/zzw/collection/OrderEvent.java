@@ -1,13 +1,26 @@
 package com.zzw.collection;
 
-import lombok.Data;
-
 /**
  * 订单事件
  */
-@Data
 public class OrderEvent {
 
     private int price;
     private String message;
+
+    public void setPrice(int price) {
+        this.price = price;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    @Override
+    public String toString() {
+        return "OrderEvent{" +
+                "price=" + price +
+                ", message='" + message + '\'' +
+                '}';
+    }
 }
