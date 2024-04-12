@@ -13,6 +13,13 @@ import com.zzw.relation.wait.WaitStrategy;
  */
 public class RingBuffer<E> {
 
+    /**
+     * 避免伪共享, 左半部分填充
+     */
+    protected long p11, p12, p13, p14, p15, p16, p17;
+
+    // ----------------------------------------
+
     private final E[] elementList;
     private final int bufferSize;
     private final int mask;
@@ -23,6 +30,13 @@ public class RingBuffer<E> {
      * "单线程 OR 多线程" 生产者序号生成器
      */
     private final Sequencer producerSequencer;
+
+    // ----------------------------------------
+
+    /**
+     * 避免伪共享, 右半部分填充
+     */
+    protected long p21, p22, p23, p24, p25, p26, p27;
 
     // =============================================================================
 

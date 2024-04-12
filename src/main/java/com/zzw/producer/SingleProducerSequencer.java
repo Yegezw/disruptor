@@ -22,11 +22,6 @@ public class SingleProducerSequencer implements Sequencer {
      */
     private final int bufferSize;
     /**
-     * <p>已申请的序号(是否发布了, 要看 currentProducerSequence)
-     * <p>单线程生产者内部使用, 所以就是普通的 long, 不考虑并发
-     */
-    private long nextValue = -1;
-    /**
      * 当前已发布的生产序号(区别于 nextValue)
      */
     private final Sequence currentProducerSequence = new Sequence();
@@ -42,11 +37,29 @@ public class SingleProducerSequencer implements Sequencer {
      * 消费者等待策略
      */
     private final WaitStrategy waitStrategy;
+
+    // ----------------------------------------
+
+    /**
+     * 避免伪共享, 左半部分填充
+     */
+    protected long p11, p12, p13, p14, p15, p16, p17;
+
+    /**
+     * <p>已申请的序号(是否发布了, 要看 currentProducerSequence)
+     * <p>单线程生产者内部使用, 所以就是普通的 long, 不考虑并发
+     */
+    private long nextValue = -1;
     /**
      * <p>当前已缓存的消费序号
      * <p>单线程生产者内部使用, 所以就是普通的 long, 不考虑并发
      */
     private long cachedConsumerSequenceValue = -1;
+
+    /**
+     * 避免伪共享, 右半部分填充
+     */
+    protected long p21, p22, p23, p24, p25, p26, p27;
 
     // =============================================================================
 

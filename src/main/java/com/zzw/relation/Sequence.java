@@ -10,9 +10,19 @@ import sun.misc.Unsafe;
 public class Sequence {
 
     /**
+     * 避免伪共享, 左半部分填充
+     */
+    protected long p11, p12, p13, p14, p15, p16, p17;
+
+    /**
      * 序号起始值默认为 -1, 保证下一序号恰好是 0(即第一个合法的序号)
      */
     private volatile long value = -1;
+
+    /**
+     * 避免伪共享, 右半部分填充
+     */
+    protected long p21, p22, p23, p24, p25, p26, p27;
 
     // ----------------------------------------
 
