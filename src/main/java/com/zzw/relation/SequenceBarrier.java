@@ -21,11 +21,11 @@ public class SequenceBarrier {
      * <p>多线程下表示: 多线程共同的已申请序号(可能未发布)
      */
     private final Sequence currentProducerSequence;
-    private final WaitStrategy waitStrategy;
     /**
      * 当前消费者所依赖的上游消费者序号集合
      */
     private final List<Sequence> dependentSequencesList;
+    private final WaitStrategy waitStrategy;
 
     public SequenceBarrier(Sequencer producerSequencer,
                            Sequence currentProducerSequence,
