@@ -4,12 +4,11 @@ import com.zzw.collection.RingBuffer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.util.Util;
-import lombok.Getter;
 
 /**
  * 单线程消费者
  */
-public class BatchEventProcessor<T> implements Runnable {
+public class BatchEventProcessor<T> implements EventProcessor {
 
     private final RingBuffer<T> ringBuffer;
     private final EventHandler<T> eventConsumer;
@@ -19,7 +18,6 @@ public class BatchEventProcessor<T> implements Runnable {
     /**
      * 消费序号
      */
-    @Getter
     private final Sequence currentConsumeSequence = new Sequence(-1);
     /**
      * 消费序号屏障
@@ -34,6 +32,11 @@ public class BatchEventProcessor<T> implements Runnable {
         this.ringBuffer = ringBuffer;
         this.eventConsumer = eventConsumer;
         this.sequenceBarrier = sequenceBarrier;
+    }
+
+    @Override
+    public Sequence getCurrentConsumeSequence() {
+        return currentConsumeSequence;
     }
 
     // =============================================================================

@@ -3,19 +3,17 @@ package com.zzw.consumer;
 import com.zzw.collection.RingBuffer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
-import lombok.Getter;
 
 /**
  * 多线程消费者的工作线程
  */
-public class WorkProcessor<T> implements Runnable {
+public class WorkProcessor<T> implements EventProcessor {
 
     private final RingBuffer<T> ringBuffer;
     private final WorkHandler<T> workHandler;
     /**
      * 消费序号
      */
-    @Getter
     private final Sequence currentConsumeSequence = new Sequence(-1);
 
     // ----------------------------------------
@@ -40,6 +38,11 @@ public class WorkProcessor<T> implements Runnable {
         this.workHandler = workHandler;
         this.sequenceBarrier = sequenceBarrier;
         this.workSequence = workSequence;
+    }
+
+    @Override
+    public Sequence getCurrentConsumeSequence() {
+        return currentConsumeSequence;
     }
 
     // =============================================================================

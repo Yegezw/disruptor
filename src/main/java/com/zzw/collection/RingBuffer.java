@@ -10,9 +10,9 @@ import com.zzw.relation.wait.WaitStrategy;
 /**
  * 环形队列
  */
-public class RingBuffer<T> {
+public class RingBuffer<E> {
 
-    private final T[] elementList;
+    private final E[] elementList;
     private final int bufferSize;
     private final int mask;
 
@@ -35,14 +35,14 @@ public class RingBuffer<T> {
         return new RingBuffer<>(sequencer, factory);
     }
 
-    public RingBuffer(Sequencer producerSequencer, EventFactory<T> eventFactory) {
+    public RingBuffer(Sequencer producerSequencer, EventFactory<E> eventFactory) {
         int bufferSize = producerSequencer.getBufferSize();
         if (Integer.bitCount(bufferSize) != 1) {
             // ringBufferSize 需要是 2 的倍数, 类似 HashMap, 求余数时效率更高
             throw new IllegalArgumentException("BufferSize must be a power of 2");
         }
 
-        this.elementList = (T[]) new Object[bufferSize];
+        this.elementList = (E[]) new Object[bufferSize];
         this.bufferSize = bufferSize;
         this.mask = bufferSize - 1;
         this.producerSequencer = producerSequencer;
@@ -54,7 +54,7 @@ public class RingBuffer<T> {
      * <p>预填充事件对象
      * <p>后续生产者和消费者都只会更新事件对象, 不会发生插入、删除等操作, 避免 GC
      */
-    private void fill(EventFactory<T> eventFactory) {
+    private void fill(EventFactory<E> eventFactory) {
         for (int i = 0; i < bufferSize; i++) {
             elementList[i] = eventFactory.newInstance();
         }
@@ -62,7 +62,7 @@ public class RingBuffer<T> {
 
     // =============================================================================
 
-    public T get(long sequence) {
+    public E get(long sequence) {
         // 由于 ringBuffer 的长度是 2 次幂, mask 为 2 次幂 - 1, 因此可以将求余运算优化为位运算
         int index = (int) (sequence & mask);
         return elementList[index];
@@ -70,42 +70,73 @@ public class RingBuffer<T> {
 
     // =============================================================================
 
+    public int getBufferSize() {
+        return bufferSize;
+    }
+
+    /**
+     * @see Sequencer#getCurrentProducerSequence()
+     */
     public Sequence getCurrentProducerSequence() {
         return producerSequencer.getCurrentProducerSequence();
     }
 
     // ----------------------------------------
 
+    /**
+     * @see Sequencer#newBarrier()
+     */
     public SequenceBarrier newBarrier() {
         return producerSequencer.newBarrier();
     }
 
+    /**
+     * @see Sequencer#newBarrier(Sequence...)
+     */
     public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
         return producerSequencer.newBarrier(dependenceSequences);
     }
 
+    /**
+     * @see Sequencer#addGatingConsumerSequence(Sequence)
+     */
     public void addGatingConsumerSequence(Sequence consumerSequence) {
         producerSequencer.addGatingConsumerSequence(consumerSequence);
     }
 
+    /**
+     * @see Sequencer#addGatingConsumerSequenceList(Sequence...)
+     */
     public void addGatingConsumerSequenceList(Sequence... consumerSequences) {
         producerSequencer.addGatingConsumerSequenceList(consumerSequences);
     }
 
+    /**
+     * @see Sequencer#removeGatingConsumerSequence(Sequence)
+     */
     public void removeGatingConsumerSequence(Sequence sequenceNeedRemove) {
         producerSequencer.removeGatingConsumerSequence(sequenceNeedRemove);
     }
 
     // ----------------------------------------
 
+    /**
+     * @see Sequencer#next()
+     */
     public long next() {
         return producerSequencer.next();
     }
 
+    /**
+     * @see Sequencer#next(int)
+     */
     public long next(int n) {
         return producerSequencer.next(n);
     }
 
+    /**
+     * @see Sequencer#publish(long)
+     */
     public void publish(Long index) {
         producerSequencer.publish(index);
     }
