@@ -4,8 +4,6 @@ import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.util.SequenceUtil;
 
-import java.util.List;
-
 /**
  * 自旋等待策略
  */
@@ -16,17 +14,17 @@ public class BusySpinWaitStrategy implements WaitStrategy {
      *
      * @param currentConsumeSequence  下一个需要消费的序号
      * @param currentProducerSequence 生产序号
-     * @param dependentSequenceList   当前消费者所依赖的上游消费者序号集合
+     * @param dependentSequences      当前消费者所依赖的上游消费者序号数组
      * @return 最大可消费序号
      */
     @Override
     public long waitFor(long currentConsumeSequence,
                         Sequence currentProducerSequence,
-                        List<Sequence> dependentSequenceList,
+                        Sequence[] dependentSequences,
                         SequenceBarrier barrier) throws InterruptedException, AlertException {
         long availableSequence;
 
-        while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequenceList)) < currentConsumeSequence) {
+        while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence) {
             // 每次循环都检查运行状态
             barrier.checkAlert();
 

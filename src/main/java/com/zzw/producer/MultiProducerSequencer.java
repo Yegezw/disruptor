@@ -3,13 +3,12 @@ package com.zzw.producer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.WaitStrategy;
+import com.zzw.util.SequenceGroups;
 import com.zzw.util.SequenceUtil;
 import com.zzw.util.Util;
 import sun.misc.Unsafe;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -29,9 +28,19 @@ public class MultiProducerSequencer implements Sequencer {
     // ----------------------------------------
 
     /**
-     * 生产序号生成器所属 RingBuffer 的消费序号集合
+     * gatingConsumerSequences 原子更新器
      */
-    private final List<Sequence> gatingConsumerSequenceList = new ArrayList<>();
+    private static final AtomicReferenceFieldUpdater<MultiProducerSequencer, Sequence[]> SEQUENCE_UPDATER =
+            AtomicReferenceFieldUpdater.newUpdater(
+                    MultiProducerSequencer.class,
+                    Sequence[].class,
+                    "gatingConsumerSequences"
+            );
+
+    /**
+     * 生产序号生成器所属 RingBuffer 的消费序号数组
+     */
+    private volatile Sequence[] gatingConsumerSequences = new Sequence[0];
     /**
      * 消费者等待策略
      */
@@ -103,28 +112,27 @@ public class MultiProducerSequencer implements Sequencer {
 
     @Override
     public SequenceBarrier newBarrier() {
-        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new ArrayList<>());
+        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new Sequence[0]);
     }
 
     @Override
     public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
-        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
-
+        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, dependenceSequences);
     }
 
     @Override
     public void addGatingConsumerSequence(Sequence newGatingConsumerSequence) {
-        gatingConsumerSequenceList.add(newGatingConsumerSequence);
+        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, currentProducerSequence, newGatingConsumerSequence);
     }
 
     @Override
     public void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences) {
-        gatingConsumerSequenceList.addAll(Arrays.asList(newGatingConsumerSequences));
+        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, currentProducerSequence, newGatingConsumerSequences);
     }
 
     @Override
     public void removeGatingConsumerSequence(Sequence sequenceNeedRemove) {
-        gatingConsumerSequenceList.remove(sequenceNeedRemove);
+        SequenceGroups.removeSequence(this, SEQUENCE_UPDATER, sequenceNeedRemove);
     }
 
     // ----------------------------------------
@@ -150,7 +158,7 @@ public class MultiProducerSequencer implements Sequencer {
             // wrapPoint <= cachedGatingSequence 才是可以申请的
             // 当生产者发现已超过消费者一圈, 就必须去读最新的消费序号了, 看看消费者的消费进度是否推进了
             if (wrapPoint > cachedGatingSequence) {
-                long gatingSequence = SequenceUtil.getMinimumSequence(gatingConsumerSequenceList, current);
+                long gatingSequence = SequenceUtil.getMinimumSequence(gatingConsumerSequences, current);
 
                 if (wrapPoint > gatingSequence) {
                     LockSupport.parkNanos(1);

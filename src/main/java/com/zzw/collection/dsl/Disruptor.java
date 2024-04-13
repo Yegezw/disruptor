@@ -92,7 +92,7 @@ public class Disruptor<T> {
     /**
      * 注册单线程消费者(依赖生产序号 + 无上游依赖)
      *
-     * @param EventHandlers 用户自定义的事件处理器集合
+     * @param EventHandlers 用户自定义的事件处理器数组
      */
     @SafeVarargs
     public final EventHandlerGroup<T> handleEventsWith(final EventHandler<T>... EventHandlers) {
@@ -102,8 +102,8 @@ public class Disruptor<T> {
     /**
      * 注册单线程消费者(依赖生产序号 + 有上游依赖)
      *
-     * @param barrierSequences 依赖的上游消费序号集合
-     * @param EventHandlers    用户自定义的事件处理器集合
+     * @param barrierSequences 依赖的上游消费序号数组
+     * @param EventHandlers    用户自定义的事件处理器数组
      */
     EventHandlerGroup<T> createEventProcessors(final Sequence[] barrierSequences, final EventHandler<T>[] EventHandlers) {
         final SequenceBarrier barrier = ringBuffer.newBarrier(barrierSequences);  // 序号屏障
@@ -132,7 +132,7 @@ public class Disruptor<T> {
     /**
      * 注册多线程消费者(依赖生产序号 + 无上游依赖)
      *
-     * @param workHandlers 用户自定义的事件处理器集合
+     * @param workHandlers 用户自定义的事件处理器数组
      */
     @SafeVarargs
     public final EventHandlerGroup<T> handleEventsWithWorkerPool(final WorkHandler<T>... workHandlers) {
@@ -142,8 +142,8 @@ public class Disruptor<T> {
     /**
      * 注册多线程消费者 (有上游依赖消费者, 仅依赖生产者序列)
      *
-     * @param barrierSequences 依赖的上游消费序号集合
-     * @param workHandlers     用户自定义的事件处理器集合
+     * @param barrierSequences 依赖的上游消费序号数组
+     * @param workHandlers     用户自定义的事件处理器数组
      */
     EventHandlerGroup<T> createWorkerPool(final Sequence[] barrierSequences, final WorkHandler<T>[] workHandlers) {
         // 序号屏障
@@ -167,13 +167,13 @@ public class Disruptor<T> {
     /**
      * 更新当前生产者注册的消费序号
      *
-     * @param barrierSequences   依赖的上游消费序号集合
-     * @param processorSequences 当前消费者的消费序号集合
+     * @param barrierSequences   依赖的上游消费序号数组
+     * @param processorSequences 当前消费者的消费序号数组
      */
     private void updateGatingSequencesForNextInChain(final Sequence[] barrierSequences, final Sequence[] processorSequences) {
         // 这是一个优化操作
         // 只需要监控 "消费者链条最末端的序号", 因为它们是最慢的消费序号
-        // 不需要监控 "依赖的上游消费序号集合", 这样能使生产者更快的遍历监听的消费序号
+        // 不需要监控 "依赖的上游消费序号数组", 这样能使生产者更快的遍历监听的消费序号
         if (processorSequences.length > 0) {
             // 从生产者监控的消费序号中删除 barrierSequences
             for (Sequence sequence : barrierSequences) {

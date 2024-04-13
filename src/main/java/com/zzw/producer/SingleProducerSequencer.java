@@ -3,11 +3,10 @@ package com.zzw.producer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.WaitStrategy;
+import com.zzw.util.SequenceGroups;
 import com.zzw.util.SequenceUtil;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -29,10 +28,19 @@ public class SingleProducerSequencer implements Sequencer {
     // ----------------------------------------
 
     /**
-     * <p>生产者序号生成器所属 RingBuffer 的消费者序号集合
-     * <p>v2 版本简单起见, 先不和 disruptor 一样用数组 + unsafe 来实现
+     * gatingConsumerSequences 原子更新器
      */
-    private final List<Sequence> gatingConsumerSequenceList = new ArrayList<>();
+    private static final AtomicReferenceFieldUpdater<SingleProducerSequencer, Sequence[]> SEQUENCE_UPDATER =
+            AtomicReferenceFieldUpdater.newUpdater(
+                    SingleProducerSequencer.class,
+                    Sequence[].class,
+                    "gatingConsumerSequences"
+            );
+
+    /**
+     * 生产者序号生成器所属 RingBuffer 的消费者序号数组
+     */
+    private volatile Sequence[] gatingConsumerSequences = new Sequence[0];
     /**
      * 消费者等待策略
      */
@@ -82,27 +90,27 @@ public class SingleProducerSequencer implements Sequencer {
 
     @Override
     public SequenceBarrier newBarrier() {
-        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new ArrayList<>());
+        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new Sequence[0]);
     }
 
     @Override
     public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
-        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new ArrayList<>(Arrays.asList(dependenceSequences)));
+        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, dependenceSequences);
     }
 
     @Override
     public void addGatingConsumerSequence(Sequence newGatingConsumerSequence) {
-        gatingConsumerSequenceList.add(newGatingConsumerSequence);
+        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, currentProducerSequence, newGatingConsumerSequence);
     }
 
     @Override
     public void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences) {
-        gatingConsumerSequenceList.addAll(Arrays.asList(newGatingConsumerSequences));
+        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, currentProducerSequence, newGatingConsumerSequences);
     }
 
     @Override
     public void removeGatingConsumerSequence(Sequence sequenceNeedRemove) {
-        gatingConsumerSequenceList.remove(sequenceNeedRemove);
+        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, sequenceNeedRemove);
     }
 
     // =============================================================================
@@ -137,7 +145,7 @@ public class SingleProducerSequencer implements Sequencer {
 
             // 当生产者发现已超过消费者一圈, 就必须去读最新的消费者序号了, 看看消费者的消费进度是否推进了
             // 这里的 consumerSequence.get 是对 volatile 变量的读, 是实时的、强一致的读
-            while (wrapPoint > (minSequence = SequenceUtil.getMinimumSequence(gatingConsumerSequenceList, nextValue))) {
+            while (wrapPoint > (minSequence = SequenceUtil.getMinimumSequence(gatingConsumerSequences, nextValue))) {
                 // 消费进度没有推进, 则生产者无法获取可用的队列空间, 循环的间歇性 park 阻塞
                 // 如果消费者消费速度比较慢, 那么生产者线程将长时间的处于自旋状态, 严重浪费 CPU 资源
                 // 因此使用 next(n) 方式获取生产者序号时, 用户必须保证消费者有足够的消费速度

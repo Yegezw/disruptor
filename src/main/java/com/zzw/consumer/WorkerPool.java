@@ -50,7 +50,7 @@ public class WorkerPool<T> {
     // =============================================================================
 
     /**
-     * 返回 workerPool + workerEventProcessor 的序号集合
+     * 返回 workerPool + workerEventProcessor 的序号数组
      */
     public Sequence[] getCurrentWorkerSequences() {
         final Sequence[] sequences = new Sequence[this.workProcessorList.size() + 1];

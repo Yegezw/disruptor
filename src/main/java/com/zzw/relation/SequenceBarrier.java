@@ -4,9 +4,6 @@ import com.zzw.producer.Sequencer;
 import com.zzw.relation.wait.AlertException;
 import com.zzw.relation.wait.WaitStrategy;
 
-import java.util.Collections;
-import java.util.List;
-
 /**
  * 消费序号屏障
  */
@@ -23,24 +20,24 @@ public class SequenceBarrier {
      */
     private final Sequence currentProducerSequence;
     /**
-     * 当前消费者所依赖的上游消费者序号集合
+     * 当前消费者所依赖的上游消费者序号数组
      */
-    private final List<Sequence> dependentSequencesList;
+    private final Sequence[] dependentSequences;
     private final WaitStrategy waitStrategy;
     private volatile boolean alerted = false;
 
     public SequenceBarrier(Sequencer producerSequencer,
                            Sequence currentProducerSequence,
                            WaitStrategy waitStrategy,
-                           List<Sequence> dependentSequencesList) {
+                           Sequence[] dependentSequences) {
         this.producerSequencer = producerSequencer;
         this.currentProducerSequence = currentProducerSequence;
         this.waitStrategy = waitStrategy;
-        if (!dependentSequencesList.isEmpty()) {
-            this.dependentSequencesList = dependentSequencesList;
+        if (dependentSequences.length != 0) {
+            this.dependentSequences = dependentSequences;
         } else {
-            // 如果传入的上游消费者序号集合为空, 就用生产者序号作为兜底的依赖
-            this.dependentSequencesList = Collections.singletonList(currentProducerSequence);
+            // 如果传入的上游消费者序号数组为空, 就用生产者序号作为兜底的依赖
+            this.dependentSequences = new Sequence[]{currentProducerSequence};
         }
     }
 
@@ -55,7 +52,7 @@ public class SequenceBarrier {
     public long getAvailableConsumeSequence(long currentConsumeSequence) throws InterruptedException, AlertException {
         checkAlert(); // 每次都检查下是否被唤醒, 被唤醒则会抛出 AlertException, 代表当前的消费者线程要终止运行了
 
-        long availableSequence = waitStrategy.waitFor(currentConsumeSequence, currentProducerSequence, dependentSequencesList, this);
+        long availableSequence = waitStrategy.waitFor(currentConsumeSequence, currentProducerSequence, dependentSequences, this);
 
         if (availableSequence < currentConsumeSequence) {
             return availableSequence;

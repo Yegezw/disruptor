@@ -34,7 +34,7 @@ public interface Sequencer {
     /**
      * 获取一个依赖 "生产序号 + 上游消费序号" 的序号屏障
      *
-     * @param dependenceSequences 依赖的上游消费序号集合
+     * @param dependenceSequences 依赖的上游消费序号数组
      * @return 依赖 "生产序号 + 上游消费序号" 的序号屏障
      */
     SequenceBarrier newBarrier(Sequence... dependenceSequences);
@@ -49,7 +49,7 @@ public interface Sequencer {
     /**
      * 向生产者添加多个需要监控的消费序号
      *
-     * @param newGatingConsumerSequences 需要监控的消费序号集合
+     * @param newGatingConsumerSequences 需要监控的消费序号数组
      */
     void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences);
 

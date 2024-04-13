@@ -4,7 +4,6 @@ import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.util.SequenceUtil;
 
-import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,13 +22,13 @@ public class BlockingWaitStrategy implements WaitStrategy {
      *
      * @param currentConsumeSequence  下一个需要消费的序号
      * @param currentProducerSequence 生产序号
-     * @param dependentSequenceList   当前消费者所依赖的上游消费者序号集合
+     * @param dependentSequences      当前消费者所依赖的上游消费者序号数组
      * @return 最大可消费序号
      */
     @Override
     public long waitFor(long currentConsumeSequence,
                         Sequence currentProducerSequence,
-                        List<Sequence> dependentSequenceList,
+                        Sequence[] dependentSequences,
                         SequenceBarrier barrier) throws InterruptedException, AlertException {
         // 如果 ringBuffer 的生产序号 < 当前所需消费序号, 说明目前消费速度 > 生产速度
         // 强一致的读生产序号, 看看生产者的生产进度是否推进了
@@ -51,10 +50,10 @@ public class BlockingWaitStrategy implements WaitStrategy {
         // currentProducerSequence >= currentConsumeSequence
 
         long availableSequence; // 最大可消费序号
-        if (!dependentSequenceList.isEmpty()) {
-            // 受制于屏障中的 dependentSequenceList
+        if (dependentSequences.length != 0) {
+            // 受制于屏障中的 dependentSequences
             // 用来控制当前消费者的消费进度 <= 其依赖的上游消费者的消费者进度
-            while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequenceList)) < currentConsumeSequence) {
+            while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence) {
                 // 每次循环都检查运行状态
                 barrier.checkAlert();
 
