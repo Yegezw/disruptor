@@ -1,4 +1,4 @@
-package com.zzw.core.producer;
+package com.zzw.p1_producer;
 
 /**
  * 事件工厂

@@ -1,6 +1,6 @@
-package com.zzw.core.wait;
+package com.zzw.p2_barrier.wait;
 
-import com.zzw.core.Sequence;
+import com.zzw.p0_core.Sequence;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;

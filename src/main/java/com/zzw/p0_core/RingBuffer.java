@@ -1,10 +1,10 @@
-package com.zzw.core;
+package com.zzw.p0_core;
 
-import com.zzw.core.consumer.barrier.SequenceBarrier;
-import com.zzw.core.producer.EventFactory;
-import com.zzw.core.producer.sequencer.Sequencer;
-import com.zzw.core.producer.sequencer.SingleProducerSequencer;
-import com.zzw.core.wait.WaitStrategy;
+import com.zzw.p2_barrier.SequenceBarrier;
+import com.zzw.p1_producer.EventFactory;
+import com.zzw.p1_producer.sequencer.Sequencer;
+import com.zzw.p1_producer.sequencer.SingleProducerSequencer;
+import com.zzw.p2_barrier.wait.WaitStrategy;
 
 public class RingBuffer<E>
 {

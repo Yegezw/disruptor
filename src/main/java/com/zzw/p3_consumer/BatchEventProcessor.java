@@ -1,8 +1,9 @@
-package com.zzw.core.consumer;
+package com.zzw.p3_consumer;
 
-import com.zzw.core.consumer.barrier.SequenceBarrier;
-import com.zzw.core.RingBuffer;
-import com.zzw.core.Sequence;
+import com.zzw.p2_barrier.SequenceBarrier;
+import com.zzw.p0_core.RingBuffer;
+import com.zzw.p0_core.Sequence;
+import com.zzw.p4_util.Util;
 
 /**
  * 批事件处理线程
@@ -62,10 +63,14 @@ public class BatchEventProcessor<E> implements Runnable
 
         while (true)
         {
+            Util.sleep(1000); // 为了测试 endOfBatch, 让消费者慢一点
+
             try
             {
                 // 获取最大可消费序号
                 long availableSequence = barrier.waitFor(nextSequence);
+                // 为了测试 endOfBatch
+                System.out.println(availableSequence);
 
                 // 消费一批
                 while (nextSequence <= availableSequence)

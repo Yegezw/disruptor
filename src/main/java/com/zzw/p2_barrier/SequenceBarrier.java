@@ -1,8 +1,8 @@
-package com.zzw.core.consumer.barrier;
+package com.zzw.p2_barrier;
 
-import com.zzw.core.Sequence;
-import com.zzw.core.consumer.BatchEventProcessor;
-import com.zzw.core.wait.WaitStrategy;
+import com.zzw.p0_core.Sequence;
+import com.zzw.p3_consumer.BatchEventProcessor;
+import com.zzw.p2_barrier.wait.WaitStrategy;
 
 /**
  * 消费序号屏障

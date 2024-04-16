@@ -1,9 +1,9 @@
-package com.zzw.core.producer.sequencer;
+package com.zzw.p1_producer.sequencer;
 
-import com.zzw.core.RingBuffer;
-import com.zzw.core.Sequence;
-import com.zzw.core.consumer.barrier.SequenceBarrier;
-import com.zzw.core.producer.EventFactory;
+import com.zzw.p0_core.RingBuffer;
+import com.zzw.p0_core.Sequence;
+import com.zzw.p2_barrier.SequenceBarrier;
+import com.zzw.p1_producer.EventFactory;
 
 /**
  * 生产者序号生成器

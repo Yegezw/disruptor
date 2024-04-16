@@ -1,8 +1,8 @@
-package com.zzw.core.wait;
+package com.zzw.p2_barrier.wait;
 
-import com.zzw.core.Sequence;
-import com.zzw.core.consumer.barrier.SequenceBarrier;
-import com.zzw.core.producer.sequencer.SingleProducerSequencer;
+import com.zzw.p0_core.Sequence;
+import com.zzw.p2_barrier.SequenceBarrier;
+import com.zzw.p1_producer.sequencer.SingleProducerSequencer;
 
 /**
  * 消费者等待策略

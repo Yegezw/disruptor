@@ -1,4 +1,4 @@
-package com.zzw.core.consumer;
+package com.zzw.p3_consumer;
 
 /**
  * 事件处理器
