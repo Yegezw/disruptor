@@ -2,6 +2,7 @@ package com.zzw.core.wait;
 
 import com.zzw.core.Sequence;
 import com.zzw.core.consumer.barrier.SequenceBarrier;
+import com.zzw.core.producer.sequencer.SingleProducerSequencer;
 
 /**
  * 消费者等待策略
@@ -21,6 +22,8 @@ public interface WaitStrategy
 
     /**
      * 由生产者调用, 唤醒 waitFor 阻塞在 "该等待策略对象" 上的消费者线程
+     *
+     * @see SingleProducerSequencer#publish(long)
      */
     void signalAllWhenBlocking();
 }
