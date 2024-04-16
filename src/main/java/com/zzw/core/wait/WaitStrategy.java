@@ -1,6 +1,7 @@
 package com.zzw.core.wait;
 
 import com.zzw.core.Sequence;
+import com.zzw.core.consumer.barrier.SequenceBarrier;
 
 /**
  * 消费者等待策略
@@ -14,6 +15,7 @@ public interface WaitStrategy
      * @param sequence 申请消费的序号
      * @param cursor   生产序号
      * @return 最大可消费序号
+     * @see SequenceBarrier#waitFor(long)
      */
     long waitFor(long sequence, Sequence cursor) throws InterruptedException;
 
