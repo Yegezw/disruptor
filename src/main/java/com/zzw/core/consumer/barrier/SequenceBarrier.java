@@ -1,7 +1,8 @@
 package com.zzw.core.consumer.barrier;
 
-import com.zzw.core.wait.WaitStrategy;
 import com.zzw.core.Sequence;
+import com.zzw.core.consumer.BatchEventProcessor;
+import com.zzw.core.wait.WaitStrategy;
 
 /**
  * 消费序号屏障
@@ -29,6 +30,7 @@ public class SequenceBarrier
      *
      * @param sequence 申请消费的序号
      * @return 最大可消费序号
+     * @see BatchEventProcessor#processEvents()
      */
     public long waitFor(long sequence) throws InterruptedException
     {
