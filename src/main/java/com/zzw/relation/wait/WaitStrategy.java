@@ -6,7 +6,8 @@ import com.zzw.relation.SequenceBarrier;
 /**
  * 消费者等待策略
  */
-public interface WaitStrategy {
+public interface WaitStrategy
+{
 
     /**
      * 等待给定的序号可供使用, 由消费者调用

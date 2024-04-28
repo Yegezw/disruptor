@@ -12,7 +12,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * 多线程消费者池
  */
-public class WorkerPool<T> {
+public class WorkerPool<T>
+{
 
     private final RingBuffer<T> ringBuffer;
     private final AtomicBoolean started = new AtomicBoolean(false);
@@ -23,7 +24,7 @@ public class WorkerPool<T> {
      * <p>工作消费序号, 多线程消费者共同的已申请序号(可能未消费)
      * <p>主要用于通过 CAS 协调同一 WorkerPool 内消费者线程争抢序号
      */
-    private final Sequence workSequence = new Sequence(-1);
+    private final Sequence               workSequence = new Sequence(-1);
     /**
      * "多线程消费者的工作线程" 列表
      */
@@ -31,13 +32,15 @@ public class WorkerPool<T> {
 
     // =============================================================================
 
-    public WorkerPool(RingBuffer<T> ringBuffer, SequenceBarrier sequenceBarrier, WorkHandler<T>... workHandlerList) {
+    public WorkerPool(RingBuffer<T> ringBuffer, SequenceBarrier sequenceBarrier, WorkHandler<T>... workHandlerList)
+    {
         this.ringBuffer = ringBuffer;
         final int numWorkers = workHandlerList.length;
         this.workProcessorList = new ArrayList<>(numWorkers);
 
         // 为每个自定义事件消费逻辑 EventHandler, 创建一个对应的 WorkProcessor 去处理
-        for (WorkHandler<T> eventConsumer : workHandlerList) {
+        for (WorkHandler<T> eventConsumer : workHandlerList)
+        {
             workProcessorList.add(new WorkProcessor<>(
                     ringBuffer,
                     eventConsumer,
@@ -52,9 +55,11 @@ public class WorkerPool<T> {
     /**
      * 返回 workerPool + workerEventProcessor 的序号数组
      */
-    public Sequence[] getCurrentWorkerSequences() {
+    public Sequence[] getCurrentWorkerSequences()
+    {
         final Sequence[] sequences = new Sequence[this.workProcessorList.size() + 1];
-        for (int i = 0, size = workProcessorList.size(); i < size; i++) {
+        for (int i = 0, size = workProcessorList.size(); i < size; i++)
+        {
             sequences[i] = workProcessorList.get(i).getCurrentConsumeSequence();
         }
         sequences[sequences.length - 1] = workSequence;
@@ -65,8 +70,10 @@ public class WorkerPool<T> {
     /**
      * 启动多线程消费者
      */
-    public RingBuffer<T> start(final Executor executor) {
-        if (!started.compareAndSet(false, true)) {
+    public RingBuffer<T> start(final Executor executor)
+    {
+        if (!started.compareAndSet(false, true))
+        {
             throw new IllegalStateException("WorkerPool 已经被启动, 在被停止前无法再次启动");
         }
 
@@ -77,7 +84,8 @@ public class WorkerPool<T> {
         workSequence.set(cursor);
 
         // 设置 WorkProcessor.currentConsumeSequence = cursor
-        for (WorkProcessor<?> processor : workProcessorList) {
+        for (WorkProcessor<?> processor : workProcessorList)
+        {
             processor.getCurrentConsumeSequence().set(cursor);
             executor.execute(processor);
         }
@@ -85,8 +93,10 @@ public class WorkerPool<T> {
         return this.ringBuffer;
     }
 
-    public void halt() {
-        for (WorkProcessor<?> processor : workProcessorList) {
+    public void halt()
+    {
+        for (WorkProcessor<?> processor : workProcessorList)
+        {
             // 挨个停止所有工作线程
             processor.halt();
         }
@@ -94,7 +104,8 @@ public class WorkerPool<T> {
         started.set(false);
     }
 
-    public boolean isRunning() {
+    public boolean isRunning()
+    {
         return started.get();
     }
 }

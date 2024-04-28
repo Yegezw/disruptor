@@ -11,9 +11,10 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * 阻塞等待策略
  */
-public class BlockingWaitStrategy implements WaitStrategy {
+public class BlockingWaitStrategy implements WaitStrategy
+{
 
-    private final Lock lock = new ReentrantLock();
+    private final Lock      lock                     = new ReentrantLock();
     private final Condition processorNotifyCondition = lock.newCondition();
 
     /**
@@ -29,20 +30,26 @@ public class BlockingWaitStrategy implements WaitStrategy {
     public long waitFor(long currentConsumeSequence,
                         Sequence currentProducerSequence,
                         Sequence[] dependentSequences,
-                        SequenceBarrier barrier) throws InterruptedException, AlertException {
+                        SequenceBarrier barrier) throws InterruptedException, AlertException
+    {
         // 如果 ringBuffer 的生产序号 < 当前所需消费序号, 说明目前消费速度 > 生产速度
         // 强一致的读生产序号, 看看生产者的生产进度是否推进了
-        if (currentProducerSequence.get() < currentConsumeSequence) {
+        if (currentProducerSequence.get() < currentConsumeSequence)
+        {
             lock.lock();
-            try {
-                while (currentProducerSequence.get() < currentConsumeSequence) {
+            try
+            {
+                while (currentProducerSequence.get() < currentConsumeSequence)
+                {
                     // 每次循环都检查运行状态(被锁保护, 不会出现丢失 signal 信号的问题)
                     barrier.checkAlert();
 
                     // 消费速度 > 生产速度, 阻塞等待
                     processorNotifyCondition.await();
                 }
-            } finally {
+            }
+            finally
+            {
                 lock.unlock();
             }
         }
@@ -50,10 +57,12 @@ public class BlockingWaitStrategy implements WaitStrategy {
         // currentProducerSequence >= currentConsumeSequence
 
         long availableSequence; // 最大可消费序号
-        if (dependentSequences.length != 0) {
+        if (dependentSequences.length != 0)
+        {
             // 受制于屏障中的 dependentSequences
             // 用来控制当前消费者的消费进度 <= 其依赖的上游消费者的消费者进度
-            while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence) {
+            while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence)
+            {
                 // 每次循环都检查运行状态
                 barrier.checkAlert();
 
@@ -61,7 +70,9 @@ public class BlockingWaitStrategy implements WaitStrategy {
                 // 在 JDK 9 开始引入的 Thread.onSpinWait 方法, 优化自旋性能
                 ThreadHints.onSpinWait();
             }
-        } else {
+        }
+        else
+        {
             // 并不存在依赖的上游消费者, 大于当前消费进度的生产者序号就是可用的消费序号
             availableSequence = currentProducerSequence.get();
         }
@@ -73,12 +84,16 @@ public class BlockingWaitStrategy implements WaitStrategy {
      * 类似 Condition.signal, 唤醒 waitFor 阻塞在该等待策略对象上的消费者线程, 由生产者调用
      */
     @Override
-    public void signalWhenBlocking() {
+    public void signalWhenBlocking()
+    {
         lock.lock();
-        try {
+        try
+        {
             // signalAll 唤醒所有阻塞在条件变量上的消费者线程
             processorNotifyCondition.signalAll();
-        } finally {
+        }
+        finally
+        {
             lock.unlock();
         }
     }

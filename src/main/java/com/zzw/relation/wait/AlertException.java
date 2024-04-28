@@ -3,7 +3,8 @@ package com.zzw.relation.wait;
 /**
  * 被唤醒异常, 用于消费者优雅停止
  */
-public class AlertException extends Exception {
+public class AlertException extends Exception
+{
 
     /**
      * 单例

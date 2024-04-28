@@ -13,12 +13,14 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-public class Test4 {
+public class Test4
+{
 
     //             / -> [B & C] -> D
     // Event -> A -         
     //             \ ->    E    -> F
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         int ringBufferSize = 16;
         Disruptor<OrderEvent> disruptor = new Disruptor<>(
                 new OrderEventFactory(),
@@ -49,7 +51,8 @@ public class Test4 {
 
         // 生产者发布 100 个事件
         RingBuffer<OrderEvent> ringBuffer = disruptor.getRingBuffer();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 100; i++)
+        {
             long nextIndex = ringBuffer.next();
 
             OrderEvent orderEvent = ringBuffer.get(nextIndex);

@@ -13,12 +13,14 @@ import com.zzw.relation.wait.BlockingWaitStrategy;
 
 import java.util.concurrent.Executors;
 
-public class Test2 {
+public class Test2
+{
 
     //                / -> 多 B \
     // Event -> 单 A -           -> 单 D
     //                \ -> 单 C /
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         int ringBufferSize = 16;
         RingBuffer<OrderEvent> ringBuffer = RingBuffer.createSingleProducer(
                 new OrderEventFactory(),
@@ -94,7 +96,8 @@ public class Test2 {
         new Thread(eventProcessorD).start(); // D
 
         // 生产者发布 100 个事件
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 100; i++)
+        {
             long nextIndex = ringBuffer.next();
 
             OrderEvent orderEvent = ringBuffer.get(nextIndex);

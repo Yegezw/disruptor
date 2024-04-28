@@ -8,7 +8,8 @@ import java.util.concurrent.Executor;
 /**
  * 多线程事件处理器(消费者)信息
  */
-public class WorkerPoolInfo<T> implements ConsumerInfo {
+public class WorkerPoolInfo<T> implements ConsumerInfo
+{
 
     /**
      * 多线程消费者池
@@ -17,39 +18,46 @@ public class WorkerPoolInfo<T> implements ConsumerInfo {
     /**
      * 默认 "是最尾端的消费者"
      */
-    private boolean endOfChain = true;
+    private       boolean       endOfChain = true;
 
-    public WorkerPoolInfo(WorkerPool<T> workerPool) {
+    public WorkerPoolInfo(WorkerPool<T> workerPool)
+    {
         this.workerPool = workerPool;
     }
 
     @Override
-    public void start(Executor executor) {
+    public void start(Executor executor)
+    {
         workerPool.start(executor);
     }
 
     @Override
-    public void halt() {
+    public void halt()
+    {
         workerPool.halt();
     }
 
     @Override
-    public boolean isEndOfChain() {
+    public boolean isEndOfChain()
+    {
         return endOfChain;
     }
 
     @Override
-    public void markAsUsedInBarrier() {
+    public void markAsUsedInBarrier()
+    {
         endOfChain = false;
     }
 
     @Override
-    public boolean isRunning() {
+    public boolean isRunning()
+    {
         return workerPool.isRunning();
     }
 
     @Override
-    public Sequence[] getSequences() {
+    public Sequence[] getSequences()
+    {
         return workerPool.getCurrentWorkerSequences();
     }
 }

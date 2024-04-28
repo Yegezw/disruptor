@@ -7,7 +7,8 @@ import com.zzw.util.SequenceUtil;
 /**
  * 自旋等待策略
  */
-public class BusySpinWaitStrategy implements WaitStrategy {
+public class BusySpinWaitStrategy implements WaitStrategy
+{
 
     /**
      * <p>等待给定的序号可供使用, 由消费者调用
@@ -21,10 +22,12 @@ public class BusySpinWaitStrategy implements WaitStrategy {
     public long waitFor(long currentConsumeSequence,
                         Sequence currentProducerSequence,
                         Sequence[] dependentSequences,
-                        SequenceBarrier barrier) throws InterruptedException, AlertException {
+                        SequenceBarrier barrier) throws InterruptedException, AlertException
+    {
         long availableSequence;
 
-        while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence) {
+        while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence)
+        {
             // 每次循环都检查运行状态
             barrier.checkAlert();
 
@@ -37,6 +40,7 @@ public class BusySpinWaitStrategy implements WaitStrategy {
     }
 
     @Override
-    public void signalWhenBlocking() {
+    public void signalWhenBlocking()
+    {
     }
 }
