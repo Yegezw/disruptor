@@ -7,7 +7,8 @@ import java.util.concurrent.Executor;
 /**
  * 消费者信息
  */
-public interface ConsumerInfo {
+public interface ConsumerInfo
+{
 
     /**
      * 通过 executor 启动当前消费者线程

@@ -20,12 +20,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * disruptor dsl
  */
-public class Disruptor<T> {
+public class Disruptor<T>
+{
 
     /**
      * 环形队列
      */
-    private final RingBuffer<T> ringBuffer;
+    private final RingBuffer<T>         ringBuffer;
     /**
      * 所有消费者信息的仓库
      */
@@ -36,7 +37,7 @@ public class Disruptor<T> {
     /**
      * 执行器
      */
-    private final Executor executor;
+    private final Executor      executor;
     /**
      * Disruptor 是否启动
      */
@@ -58,8 +59,9 @@ public class Disruptor<T> {
             final int bufferSize,
             final Executor executor,
             final ProducerType producerType,
-            final WaitStrategy waitStrategy) {
-        this.executor = executor;
+            final WaitStrategy waitStrategy)
+    {
+        this.executor   = executor;
         this.ringBuffer = RingBuffer.create(producerType, eventFactory, bufferSize, waitStrategy);
     }
 
@@ -68,21 +70,25 @@ public class Disruptor<T> {
     /**
      * 获得当前 Disruptor 的 ringBuffer
      */
-    public RingBuffer<T> getRingBuffer() {
+    public RingBuffer<T> getRingBuffer()
+    {
         return ringBuffer;
     }
 
     /**
      * 启动所有已注册的消费者
      */
-    public void start() {
+    public void start()
+    {
         // CAS 设置启动标识, 避免重复启动
-        if (!started.compareAndSet(false, true)) {
+        if (!started.compareAndSet(false, true))
+        {
             throw new RuntimeException("Disruptor 只能启动一次");
         }
 
         // 遍历所有的消费者, 挨个 start 启动
-        for (ConsumerInfo consumerInfo : consumerRepository.getConsumerInfos()) {
+        for (ConsumerInfo consumerInfo : consumerRepository.getConsumerInfos())
+        {
             consumerInfo.start(executor);
         }
     }
@@ -95,7 +101,8 @@ public class Disruptor<T> {
      * @param EventHandlers 用户自定义的事件处理器数组
      */
     @SafeVarargs
-    public final EventHandlerGroup<T> handleEventsWith(final EventHandler<T>... EventHandlers) {
+    public final EventHandlerGroup<T> handleEventsWith(final EventHandler<T>... EventHandlers)
+    {
         return createEventProcessors(new Sequence[0], EventHandlers);
     }
 
@@ -103,14 +110,16 @@ public class Disruptor<T> {
      * 注册单线程消费者(依赖生产序号 + 有上游依赖)
      *
      * @param barrierSequences 依赖的上游消费序号数组
-     * @param EventHandlers    用户自定义的事件处理器数组
+     * @param eventHandlers    用户自定义的事件处理器数组
      */
-    EventHandlerGroup<T> createEventProcessors(final Sequence[] barrierSequences, final EventHandler<T>[] EventHandlers) {
-        final SequenceBarrier barrier = ringBuffer.newBarrier(barrierSequences);  // 序号屏障
-        final Sequence[] processorSequences = new Sequence[EventHandlers.length]; // 消费序号
+    EventHandlerGroup<T> createEventProcessors(final Sequence[] barrierSequences, final EventHandler<T>[] eventHandlers)
+    {
+        final SequenceBarrier barrier            = ringBuffer.newBarrier(barrierSequences); // 序号屏障
+        final Sequence[]      processorSequences = new Sequence[eventHandlers.length];      // 消费序号
 
         int i = 0;
-        for (EventHandler<T> EventConsumer : EventHandlers) {
+        for (EventHandler<T> EventConsumer : eventHandlers)
+        {
             // 创建单线程消费者
             final BatchEventProcessor<T> batchEventProcessor = new BatchEventProcessor<>(ringBuffer, EventConsumer, barrier);
 
@@ -135,7 +144,8 @@ public class Disruptor<T> {
      * @param workHandlers 用户自定义的事件处理器数组
      */
     @SafeVarargs
-    public final EventHandlerGroup<T> handleEventsWithWorkerPool(final WorkHandler<T>... workHandlers) {
+    public final EventHandlerGroup<T> handleEventsWithWorkerPool(final WorkHandler<T>... workHandlers)
+    {
         return createWorkerPool(new Sequence[0], workHandlers);
     }
 
@@ -145,7 +155,8 @@ public class Disruptor<T> {
      * @param barrierSequences 依赖的上游消费序号数组
      * @param workHandlers     用户自定义的事件处理器数组
      */
-    EventHandlerGroup<T> createWorkerPool(final Sequence[] barrierSequences, final WorkHandler<T>[] workHandlers) {
+    EventHandlerGroup<T> createWorkerPool(final Sequence[] barrierSequences, final WorkHandler<T>[] workHandlers)
+    {
         // 序号屏障
         final SequenceBarrier sequenceBarrier = ringBuffer.newBarrier(barrierSequences);
 
@@ -170,13 +181,16 @@ public class Disruptor<T> {
      * @param barrierSequences   依赖的上游消费序号数组
      * @param processorSequences 当前消费者的消费序号数组
      */
-    private void updateGatingSequencesForNextInChain(final Sequence[] barrierSequences, final Sequence[] processorSequences) {
+    private void updateGatingSequencesForNextInChain(final Sequence[] barrierSequences, final Sequence[] processorSequences)
+    {
         // 这是一个优化操作
         // 只需要监控 "消费者链条最末端的序号", 因为它们是最慢的消费序号
         // 不需要监控 "依赖的上游消费序号数组", 这样能使生产者更快的遍历监听的消费序号
-        if (processorSequences.length > 0) {
+        if (processorSequences.length > 0)
+        {
             // 从生产者监控的消费序号中删除 barrierSequences
-            for (Sequence sequence : barrierSequences) {
+            for (Sequence sequence : barrierSequences)
+            {
                 ringBuffer.removeGatingConsumerSequence(sequence);
             }
 
@@ -193,8 +207,10 @@ public class Disruptor<T> {
     /**
      * 停止所有消费者线程
      */
-    public void halt() {
-        for (final ConsumerInfo consumerInfo : consumerRepository.getConsumerInfos()) {
+    public void halt()
+    {
+        for (final ConsumerInfo consumerInfo : consumerRepository.getConsumerInfos())
+        {
             consumerInfo.halt();
         }
     }
@@ -202,11 +218,14 @@ public class Disruptor<T> {
     /**
      * 等所有消费者线程 "把已生产的事件全部消费完成" 后, 再停止所有消费者线程
      */
-    public void shutdown(long timeout, TimeUnit timeUnit) {
+    public void shutdown(long timeout, TimeUnit timeUnit)
+    {
         final long timeOutAt = System.currentTimeMillis() + timeUnit.toMillis(timeout);
 
-        while (hasBacklog()) {
-            if (timeout >= 0 && System.currentTimeMillis() > timeOutAt) {
+        while (hasBacklog())
+        {
+            if (timeout >= 0 && System.currentTimeMillis() > timeOutAt)
+            {
                 throw new RuntimeException("disruptor shutdown 操作, 等待超时");
             }
             // Busy spin
@@ -220,12 +239,15 @@ public class Disruptor<T> {
     /**
      * 判断最尾端消费者线程 "是否还有未消费完的事件"
      */
-    private boolean hasBacklog() {
+    private boolean hasBacklog()
+    {
         final long cursor = ringBuffer.getCurrentProducerSequence().get();
 
         // 获取所有处于最尾端的消费者序号(最尾端的是最慢的, 所以是准确的)
-        for (final Sequence consumer : consumerRepository.getLastSequenceInChain()) {
-            if (cursor > consumer.get()) {
+        for (final Sequence consumer : consumerRepository.getLastSequenceInChain())
+        {
+            if (cursor > consumer.get())
+            {
                 // 如果任意一个消费序号 < 当前生产序号, 说明存在未消费完的事件, 返回 true
                 return true;
             }

@@ -6,7 +6,8 @@ import com.zzw.relation.SequenceBarrier;
 /**
  * 序号生成器
  */
-public interface Sequencer {
+public interface Sequencer
+{
 
     /**
      * 获取 RingBuffer 的大小
@@ -55,8 +56,9 @@ public interface Sequencer {
 
     /**
      * 从生产者监控的消费序号中 "移除目标消费序号"
+     *
      * @param sequenceNeedRemove 待移除的目标消费序号
-     * */
+     */
     void removeGatingConsumerSequence(Sequence sequenceNeedRemove);
 
     // ----------------------------------------

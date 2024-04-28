@@ -16,12 +16,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Test3 {
+public class Test3
+{
 
     //                / -> 多 B \
     // Event -> 单 A -           -> 单 D
     //                \ -> 单 C /
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         int ringBufferSize = 16;
         RingBuffer<OrderEvent> ringBuffer = RingBuffer.createMultiProducer(
                 new OrderEventFactory(),
@@ -98,22 +100,28 @@ public class Test3 {
 
         // --------------------------------------------------------------------------------------
 
-        ExecutorService executorService = Executors.newFixedThreadPool(3, new ThreadFactory() {
+        ExecutorService executorService = Executors.newFixedThreadPool(3, new ThreadFactory()
+        {
             private final AtomicInteger count = new AtomicInteger(1);
 
             @Override
-            public Thread newThread(Runnable r) {
+            public Thread newThread(Runnable r)
+            {
                 return new Thread(r, "workerProducer-" + count.getAndIncrement());
             }
         });
 
         // 启动 3 个生产者线程
-        for (int i = 0; i < 3; i++) {
-            executorService.execute(new Runnable() {
+        for (int i = 0; i < 3; i++)
+        {
+            executorService.execute(new Runnable()
+            {
                 @Override
-                public void run() {
+                public void run()
+                {
                     // 生产者发布 100 个事件
-                    for (int i = 0; i < 100; i++) {
+                    for (int i = 0; i < 100; i++)
+                    {
                         long nextIndex = ringBuffer.next();
 
                         OrderEvent orderEvent = ringBuffer.get(nextIndex);

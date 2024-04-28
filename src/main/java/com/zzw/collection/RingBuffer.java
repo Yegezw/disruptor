@@ -11,7 +11,8 @@ import com.zzw.relation.wait.WaitStrategy;
 /**
  * 环形队列
  */
-public class RingBuffer<E> {
+public class RingBuffer<E>
+{
 
     /**
      * 避免伪共享, 左半部分填充
@@ -28,9 +29,9 @@ public class RingBuffer<E> {
      * <p>环形数组
      * <p>数组对象头｜填充的 128 个无效字节｜有效数据(引用)｜填充的 128 个无效字节
      */
-    private final E[] elementList;
-    private final int bufferSize;
-    private final int mask;
+    private final        E[] elementList;
+    private final        int bufferSize;
+    private final        int mask;
 
     // ----------------------------------------
 
@@ -59,12 +60,16 @@ public class RingBuffer<E> {
     public static <E> RingBuffer<E> create(ProducerType producerType,
                                            EventFactory<E> eventFactory,
                                            int bufferSize,
-                                           WaitStrategy waitStrategy) {
-        switch (producerType) {
-            case SINGLE: {
+                                           WaitStrategy waitStrategy)
+    {
+        switch (producerType)
+        {
+            case SINGLE:
+            {
                 return createSingleProducer(eventFactory, bufferSize, waitStrategy);
             }
-            case MULTI: {
+            case MULTI:
+            {
                 return createMultiProducer(eventFactory, bufferSize, waitStrategy);
             }
             default:
@@ -72,28 +77,32 @@ public class RingBuffer<E> {
         }
     }
 
-    public static <E> RingBuffer<E> createSingleProducer(EventFactory<E> factory, int bufferSize, WaitStrategy waitStrategy) {
+    public static <E> RingBuffer<E> createSingleProducer(EventFactory<E> factory, int bufferSize, WaitStrategy waitStrategy)
+    {
         SingleProducerSequencer sequencer = new SingleProducerSequencer(bufferSize, waitStrategy);
         return new RingBuffer<>(sequencer, factory);
     }
 
-    public static <E> RingBuffer<E> createMultiProducer(EventFactory<E> factory, int bufferSize, WaitStrategy waitStrategy) {
+    public static <E> RingBuffer<E> createMultiProducer(EventFactory<E> factory, int bufferSize, WaitStrategy waitStrategy)
+    {
         MultiProducerSequencer sequencer = new MultiProducerSequencer(bufferSize, waitStrategy);
         return new RingBuffer<>(sequencer, factory);
     }
 
     @SuppressWarnings("unchecked")
-    public RingBuffer(Sequencer producerSequencer, EventFactory<E> eventFactory) {
+    public RingBuffer(Sequencer producerSequencer, EventFactory<E> eventFactory)
+    {
         int bufferSize = producerSequencer.getBufferSize();
-        if (Integer.bitCount(bufferSize) != 1) {
+        if (Integer.bitCount(bufferSize) != 1)
+        {
             // ringBufferSize 需要是 2 的倍数, 类似 HashMap, 求余数时效率更高
             throw new IllegalArgumentException("BufferSize must be a power of 2");
         }
 
         // 保证数组的有效数据(引用)不会与其它数据位于同一缓存行, 避免伪共享
-        this.elementList = (E[]) new Object[bufferSize + 2 * BUFFER_PAD];
-        this.bufferSize = bufferSize;
-        this.mask = bufferSize - 1;
+        this.elementList       = (E[]) new Object[bufferSize + 2 * BUFFER_PAD];
+        this.bufferSize        = bufferSize;
+        this.mask              = bufferSize - 1;
         this.producerSequencer = producerSequencer;
 
         fill(eventFactory);
@@ -103,8 +112,10 @@ public class RingBuffer<E> {
      * <p>预填充事件对象
      * <p>数组中的对象可以一直复用, 在一定程度上减少垃圾回收, 但是该对象中封装的对象仍然会被垃圾回收
      */
-    private void fill(EventFactory<E> eventFactory) {
-        for (int i = 0; i < bufferSize; i++) {
+    private void fill(EventFactory<E> eventFactory)
+    {
+        for (int i = 0; i < bufferSize; i++)
+        {
             // 数组第一个有效数据的索引是 BUFFER_PAD
             // for 循环创建数组中的对象, 可以让这些对象在堆内存中的地址尽可能的连续一点
             elementList[BUFFER_PAD + i] = eventFactory.newInstance();
@@ -113,7 +124,8 @@ public class RingBuffer<E> {
 
     // =============================================================================
 
-    public E get(long sequence) {
+    public E get(long sequence)
+    {
         // 由于 ringBuffer 的长度是 2 次幂, mask 为 2 次幂 - 1, 因此可以将求余运算优化为位运算
         int index = (int) (sequence & mask);
         return elementList[BUFFER_PAD + index];
@@ -121,14 +133,16 @@ public class RingBuffer<E> {
 
     // =============================================================================
 
-    public int getBufferSize() {
+    public int getBufferSize()
+    {
         return bufferSize;
     }
 
     /**
      * @see Sequencer#getCurrentProducerSequence()
      */
-    public Sequence getCurrentProducerSequence() {
+    public Sequence getCurrentProducerSequence()
+    {
         return producerSequencer.getCurrentProducerSequence();
     }
 
@@ -137,35 +151,40 @@ public class RingBuffer<E> {
     /**
      * @see Sequencer#newBarrier()
      */
-    public SequenceBarrier newBarrier() {
+    public SequenceBarrier newBarrier()
+    {
         return producerSequencer.newBarrier();
     }
 
     /**
      * @see Sequencer#newBarrier(Sequence...)
      */
-    public SequenceBarrier newBarrier(Sequence... dependenceSequences) {
+    public SequenceBarrier newBarrier(Sequence... dependenceSequences)
+    {
         return producerSequencer.newBarrier(dependenceSequences);
     }
 
     /**
      * @see Sequencer#addGatingConsumerSequence(Sequence)
      */
-    public void addGatingConsumerSequence(Sequence consumerSequence) {
+    public void addGatingConsumerSequence(Sequence consumerSequence)
+    {
         producerSequencer.addGatingConsumerSequence(consumerSequence);
     }
 
     /**
      * @see Sequencer#addGatingConsumerSequenceList(Sequence...)
      */
-    public void addGatingConsumerSequenceList(Sequence... consumerSequences) {
+    public void addGatingConsumerSequenceList(Sequence... consumerSequences)
+    {
         producerSequencer.addGatingConsumerSequenceList(consumerSequences);
     }
 
     /**
      * @see Sequencer#removeGatingConsumerSequence(Sequence)
      */
-    public void removeGatingConsumerSequence(Sequence sequenceNeedRemove) {
+    public void removeGatingConsumerSequence(Sequence sequenceNeedRemove)
+    {
         producerSequencer.removeGatingConsumerSequence(sequenceNeedRemove);
     }
 
@@ -174,21 +193,24 @@ public class RingBuffer<E> {
     /**
      * @see Sequencer#next()
      */
-    public long next() {
+    public long next()
+    {
         return producerSequencer.next();
     }
 
     /**
      * @see Sequencer#next(int)
      */
-    public long next(int n) {
+    public long next(int n)
+    {
         return producerSequencer.next(n);
     }
 
     /**
      * @see Sequencer#publish(long)
      */
-    public void publish(Long index) {
+    public void publish(Long index)
+    {
         producerSequencer.publish(index);
     }
 }

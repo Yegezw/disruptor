@@ -3,7 +3,8 @@ package com.zzw.collection.dsl.producer;
 /**
  * 生产者类型枚举
  */
-public enum ProducerType {
+public enum ProducerType
+{
 
     /**
      * 单线程生产者
