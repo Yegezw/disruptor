@@ -90,6 +90,7 @@ public class BatchEventProcessor<T> implements EventProcessor
                 // running == false, break 跳出主循环, 运行结束
                 if (!running.get())
                 {
+                    System.out.println(Thread.currentThread().getName() + " " + eventConsumer.getName() + " 退出");
                     break;
                 }
             }
