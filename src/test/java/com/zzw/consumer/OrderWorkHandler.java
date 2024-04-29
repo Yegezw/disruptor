@@ -20,4 +20,10 @@ public class OrderWorkHandler implements WorkHandler<OrderEvent>
     {
         System.out.println(consumerName + " 消费者消费事件: " + event);
     }
+
+    @Override
+    public String getName()
+    {
+        return consumerName;
+    }
 }

@@ -14,4 +14,9 @@ public interface EventHandler<T>
      * @param endOfBatch 当前事件是否是这一批事件中的最后一个
      */
     void consume(T event, long sequence, boolean endOfBatch);
+
+    /**
+     * 获取消费者名称
+     */
+    String getName();
 }

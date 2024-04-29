@@ -27,4 +27,10 @@ public class OrderEventHandler implements EventHandler<OrderEvent>
     {
         System.out.println(consumerName + " 消费者消费事件: " + event + " sequence = " + sequence + " endOfBatch = " + endOfBatch);
     }
+
+    @Override
+    public String getName()
+    {
+        return consumerName;
+    }
 }
