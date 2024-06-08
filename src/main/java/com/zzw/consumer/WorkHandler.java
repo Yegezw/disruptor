@@ -11,7 +11,7 @@ public interface WorkHandler<T>
      *
      * @param event 事件对象
      */
-    void consume(T event);
+    void onEvent(T event);
 
     /**
      * 获取消费者名称

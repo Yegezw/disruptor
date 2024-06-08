@@ -32,20 +32,20 @@ public class Test1
         // 基于序号屏障, 创建消费者 A
         BatchEventProcessor<OrderEvent> eventProcessorA = new BatchEventProcessor<>(
                 ringBuffer,
-                new OrderEventHandler("consumerA"),
-                sequenceBarrier);
+                sequenceBarrier,
+                new OrderEventHandler("consumerA"));
         // RingBuffer 监听消费者 A 的序号, 用于控制生产速度
-        Sequence consumeSequenceA = eventProcessorA.getCurrentConsumeSequence();
-        ringBuffer.addGatingConsumerSequenceList(consumeSequenceA);
+        Sequence consumeSequenceA = eventProcessorA.getSequence();
+        ringBuffer.addGatingSequences(consumeSequenceA);
 
         // 基于序号屏障, 创建消费者 B
         BatchEventProcessor<OrderEvent> eventProcessorB = new BatchEventProcessor<>(
                 ringBuffer,
-                new OrderEventHandler("consumerB"),
-                sequenceBarrier);
+                sequenceBarrier,
+                new OrderEventHandler("consumerB"));
         // RingBuffer 监听消费者 B 的序号, 用于控制生产速度
-        Sequence consumeSequenceB = eventProcessorB.getCurrentConsumeSequence();
-        ringBuffer.addGatingConsumerSequenceList(consumeSequenceB);
+        Sequence consumeSequenceB = eventProcessorB.getSequence();
+        ringBuffer.addGatingSequences(consumeSequenceB);
 
         // --------------------------------------------------------------------------------------
 
@@ -55,20 +55,20 @@ public class Test1
         // 基于屏障, 创建消费者 C
         BatchEventProcessor<OrderEvent> eventProcessorC = new BatchEventProcessor<>(
                 ringBuffer,
-                new OrderEventHandler("consumerC"),
-                sequenceBarrierAB);
+                sequenceBarrierAB,
+                new OrderEventHandler("consumerC"));
         // RingBuffer 监听消费者 C 的序号, 用于控制生产速度
-        Sequence consumeSequenceC = eventProcessorC.getCurrentConsumeSequence();
-        ringBuffer.addGatingConsumerSequenceList(consumeSequenceC);
+        Sequence consumeSequenceC = eventProcessorC.getSequence();
+        ringBuffer.addGatingSequences(consumeSequenceC);
 
         // 基于序号屏障, 创建消费者 D
         BatchEventProcessor<OrderEvent> eventProcessorD = new BatchEventProcessor<>(
                 ringBuffer,
-                new OrderEventHandler("consumerD"),
-                sequenceBarrierAB);
+                sequenceBarrierAB,
+                new OrderEventHandler("consumerD"));
         // RingBuffer 监听消费者 D 的序号, 用于控制生产速度
-        Sequence consumeSequenceD = eventProcessorD.getCurrentConsumeSequence();
-        ringBuffer.addGatingConsumerSequenceList(consumeSequenceD);
+        Sequence consumeSequenceD = eventProcessorD.getSequence();
+        ringBuffer.addGatingSequences(consumeSequenceD);
 
         // --------------------------------------------------------------------------------------
 
@@ -78,11 +78,11 @@ public class Test1
         // 基于序号屏障, 创建消费者 E
         BatchEventProcessor<OrderEvent> eventProcessorE = new BatchEventProcessor<>(
                 ringBuffer,
-                new OrderEventHandler("consumerE"),
-                sequenceBarrierC);
+                sequenceBarrierC,
+                new OrderEventHandler("consumerE"));
         // RingBuffer 监听消费者 E 的序号, 用于控制生产速度
-        Sequence consumeSequenceE = eventProcessorE.getCurrentConsumeSequence();
-        ringBuffer.addGatingConsumerSequenceList(consumeSequenceE);
+        Sequence consumeSequenceE = eventProcessorE.getSequence();
+        ringBuffer.addGatingSequences(consumeSequenceE);
 
         // --------------------------------------------------------------------------------------
 
@@ -92,20 +92,20 @@ public class Test1
         // 基于序号屏障, 创建消费者 F
         BatchEventProcessor<OrderEvent> eventProcessorF = new BatchEventProcessor<>(
                 ringBuffer,
-                new OrderEventHandler("consumerF"),
-                sequenceBarrierD);
+                sequenceBarrierD,
+                new OrderEventHandler("consumerF"));
         // RingBuffer 监听消费者 F 的序号, 用于控制生产速度
-        Sequence consumeSequenceF = eventProcessorF.getCurrentConsumeSequence();
-        ringBuffer.addGatingConsumerSequenceList(consumeSequenceF);
+        Sequence consumeSequenceF = eventProcessorF.getSequence();
+        ringBuffer.addGatingSequences(consumeSequenceF);
 
         // 基于序号屏障, 创建消费者 G
         BatchEventProcessor<OrderEvent> eventProcessorG = new BatchEventProcessor<>(
                 ringBuffer,
-                new OrderEventHandler("consumerG"),
-                sequenceBarrierD);
+                sequenceBarrierD,
+                new OrderEventHandler("consumerG"));
         // RingBuffer 监听消费者 G 的序号, 用于控制生产速度
-        Sequence consumeSequenceG = eventProcessorG.getCurrentConsumeSequence();
-        ringBuffer.addGatingConsumerSequenceList(consumeSequenceG);
+        Sequence consumeSequenceG = eventProcessorG.getSequence();
+        ringBuffer.addGatingSequences(consumeSequenceG);
 
         // ======================================================================================
 

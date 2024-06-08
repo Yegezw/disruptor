@@ -4,8 +4,6 @@ import com.zzw.collection.RingBuffer;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -24,28 +22,31 @@ public class WorkerPool<T>
      * <p>工作消费序号, 多线程消费者共同的已申请序号(可能未消费)
      * <p>主要用于通过 CAS 协调同一 WorkerPool 内消费者线程争抢序号
      */
-    private final Sequence               workSequence = new Sequence(-1);
+    private final Sequence           workSequence = new Sequence(-1);
     /**
-     * "多线程消费者的工作线程" 列表
+     * "多线程消费者的工作线程" 数组
      */
-    private final List<WorkProcessor<T>> workProcessorList;
+    private final WorkProcessor<?>[] workProcessors;
 
     // =============================================================================
 
-    public WorkerPool(RingBuffer<T> ringBuffer, SequenceBarrier sequenceBarrier, WorkHandler<T>... workHandlerList)
+    @SafeVarargs
+    public WorkerPool(RingBuffer<T> ringBuffer,
+                      SequenceBarrier sequenceBarrier,
+                      WorkHandler<? super T>... workHandlers)
     {
         this.ringBuffer = ringBuffer;
-        final int numWorkers = workHandlerList.length;
-        this.workProcessorList = new ArrayList<>(numWorkers);
+        final int numWorkers = workHandlers.length;
+        workProcessors = new WorkProcessor[numWorkers];
 
         // 为每个自定义事件消费逻辑 EventHandler, 创建一个对应的 WorkProcessor 去处理
-        for (WorkHandler<T> eventConsumer : workHandlerList)
+        for (int i = 0; i < numWorkers; i++)
         {
-            workProcessorList.add(new WorkProcessor<>(
+            workProcessors[i] = new WorkProcessor<>(
                     ringBuffer,
-                    eventConsumer,
                     sequenceBarrier,
-                    this.workSequence)
+                    workHandlers[i],
+                    workSequence
             );
         }
     }
@@ -55,12 +56,12 @@ public class WorkerPool<T>
     /**
      * 返回 workerPool + workerEventProcessor 的序号数组
      */
-    public Sequence[] getCurrentWorkerSequences()
+    public Sequence[] getWorkerSequences()
     {
-        final Sequence[] sequences = new Sequence[this.workProcessorList.size() + 1];
-        for (int i = 0, size = workProcessorList.size(); i < size; i++)
+        final Sequence[] sequences = new Sequence[workProcessors.length + 1];
+        for (int i = 0, size = workProcessors.length; i < size; i++)
         {
-            sequences[i] = workProcessorList.get(i).getCurrentConsumeSequence();
+            sequences[i] = workProcessors[i].getSequence();
         }
         sequences[sequences.length - 1] = workSequence;
 
@@ -78,15 +79,15 @@ public class WorkerPool<T>
         }
 
         // 生产者序号
-        final long cursor = ringBuffer.getCurrentProducerSequence().get();
+        final long cursor = ringBuffer.getCursor().get();
 
         // 设置 workSequence = cursor
         workSequence.set(cursor);
 
         // 设置 WorkProcessor.currentConsumeSequence = cursor
-        for (WorkProcessor<?> processor : workProcessorList)
+        for (WorkProcessor<?> processor : workProcessors)
         {
-            processor.getCurrentConsumeSequence().set(cursor);
+            processor.getSequence().set(cursor);
             executor.execute(processor);
         }
 
@@ -95,7 +96,7 @@ public class WorkerPool<T>
 
     public void halt()
     {
-        for (WorkProcessor<?> processor : workProcessorList)
+        for (WorkProcessor<?> processor : workProcessors)
         {
             // 挨个停止所有工作线程
             processor.halt();

@@ -21,7 +21,7 @@ public interface Sequencer
      *
      * @return 当前生产序号
      */
-    Sequence getCurrentProducerSequence();
+    Sequence getCursor();
 
     // ----------------------------------------
 
@@ -35,31 +35,24 @@ public interface Sequencer
     /**
      * 获取一个依赖 "生产序号 + 上游消费序号" 的序号屏障
      *
-     * @param dependenceSequences 依赖的上游消费序号数组
+     * @param sequencesToTrack 依赖的上游消费序号数组
      * @return 依赖 "生产序号 + 上游消费序号" 的序号屏障
      */
-    SequenceBarrier newBarrier(Sequence... dependenceSequences);
-
-    /**
-     * 向生产者添加一个需要监控的消费序号
-     *
-     * @param newGatingConsumerSequence 需要监控的消费序号
-     */
-    void addGatingConsumerSequence(Sequence newGatingConsumerSequence);
+    SequenceBarrier newBarrier(Sequence... sequencesToTrack);
 
     /**
      * 向生产者添加多个需要监控的消费序号
      *
-     * @param newGatingConsumerSequences 需要监控的消费序号数组
+     * @param gatingSequences 需要监控的消费序号数组
      */
-    void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences);
+    void addGatingSequences(Sequence... gatingSequences);
 
     /**
      * 从生产者监控的消费序号中 "移除目标消费序号"
      *
-     * @param sequenceNeedRemove 待移除的目标消费序号
+     * @param sequence 待移除的目标消费序号
      */
-    void removeGatingConsumerSequence(Sequence sequenceNeedRemove);
+    void removeGatingSequence(Sequence sequence);
 
     // ----------------------------------------
 
@@ -90,9 +83,9 @@ public interface Sequencer
     /**
      * 获取 "连续的 + 已发布的 + 最大的" 生产序号
      *
-     * @param nextSequence      下一个需要消费的序号
+     * @param lowerBound        下一个需要消费的序号
      * @param availableSequence 最大可消费序号
      * @return "连续的 + 已发布的 + 最大的" 生产序号
      */
-    long getHighestPublishedSequence(long nextSequence, long availableSequence);
+    long getHighestPublishedSequence(long lowerBound, long availableSequence);
 }

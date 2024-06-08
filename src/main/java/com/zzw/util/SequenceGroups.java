@@ -46,7 +46,8 @@ public class SequenceGroups
 
             // CAS 的将新数组赋值给对象, 允许 disruptor 在运行时并发的注册新的消费者 Sequence[]
             // 只有 CAS 赋值成功才会返回, 失败的话会重新获取最新的 currentSequences, 重新构建、合并新的 updatedSequences 数组
-        } while (!updater.compareAndSet(holder, currentSequences, updatedSequences));
+        }
+        while (!updater.compareAndSet(holder, currentSequences, updatedSequences));
 
         // 新注册的消费序号, 再以生产者的生产序号为准, 做一次最终修正
         cursorSequence = currentProducerSequence.get();
@@ -94,7 +95,8 @@ public class SequenceGroups
                     newSequences[pos++] = testSequence;
                 }
             }
-        } while (!sequenceUpdater.compareAndSet(holder, oldSequences, newSequences));
+        }
+        while (!sequenceUpdater.compareAndSet(holder, oldSequences, newSequences));
     }
 
     private static int countMatching(Sequence[] values, final Sequence toMatch)

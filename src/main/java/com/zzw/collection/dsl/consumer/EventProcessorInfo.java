@@ -58,6 +58,6 @@ public class EventProcessorInfo<T> implements ConsumerInfo
     @Override
     public Sequence[] getSequences()
     {
-        return new Sequence[]{eventProcessor.getCurrentConsumeSequence()};
+        return new Sequence[]{eventProcessor.getSequence()};
     }
 }

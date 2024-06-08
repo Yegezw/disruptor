@@ -35,16 +35,16 @@ public class EventHandlerGroup<T>
     // =============================================================================
 
     @SafeVarargs
-    public final EventHandlerGroup<T> then(final EventHandler<T>... EventHandlers)
+    public final EventHandlerGroup<T> then(final EventHandler<? super T>... handlers)
     {
-        return handleEventsWith(EventHandlers);
+        return handleEventsWith(handlers);
     }
 
     /**
      * 向 disruptor 注册单线程消费者(依赖生产序号 + 上游依赖为 sequences)
      */
     @SafeVarargs
-    public final EventHandlerGroup<T> handleEventsWith(final EventHandler<T>... handlers)
+    public final EventHandlerGroup<T> handleEventsWith(final EventHandler<? super T>... handlers)
     {
         return disruptor.createEventProcessors(sequences, handlers);
     }
@@ -52,7 +52,7 @@ public class EventHandlerGroup<T>
     // ----------------------------------------
 
     @SafeVarargs
-    public final EventHandlerGroup<T> thenHandleEventsWithWorkerPool(final WorkHandler<T>... handlers)
+    public final EventHandlerGroup<T> thenHandleEventsWithWorkerPool(final WorkHandler<? super T>... handlers)
     {
         return handleEventsWithWorkerPool(handlers);
     }
@@ -61,7 +61,7 @@ public class EventHandlerGroup<T>
      * 向 disruptor 注册多线程消费者(依赖生产序号 + 上游依赖为 sequences)
      */
     @SafeVarargs
-    public final EventHandlerGroup<T> handleEventsWithWorkerPool(final WorkHandler<T>... handlers)
+    public final EventHandlerGroup<T> handleEventsWithWorkerPool(final WorkHandler<? super T>... handlers)
     {
         return disruptor.createWorkerPool(sequences, handlers);
     }

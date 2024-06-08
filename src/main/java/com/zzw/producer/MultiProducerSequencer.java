@@ -24,24 +24,25 @@ public class MultiProducerSequencer implements Sequencer
     /**
      * 多线程生产者共同的已申请序号(可能未发布)
      */
-    private final Sequence currentProducerSequence = new Sequence();
+    private final Sequence cursor = new Sequence();
 
     // ----------------------------------------
 
     /**
-     * gatingConsumerSequences 原子更新器
+     * gatingSequences 原子更新器
      */
     private static final AtomicReferenceFieldUpdater<MultiProducerSequencer, Sequence[]> SEQUENCE_UPDATER =
             AtomicReferenceFieldUpdater.newUpdater(
                     MultiProducerSequencer.class,
                     Sequence[].class,
-                    "gatingConsumerSequences"
+                    "gatingSequences"
             );
 
     /**
      * 生产序号生成器所属 RingBuffer 的消费序号数组
      */
-    private volatile Sequence[]   gatingConsumerSequences = new Sequence[0];
+    @SuppressWarnings("all")
+    private volatile Sequence[]   gatingSequences     = new Sequence[0];
     /**
      * 消费者等待策略
      */
@@ -51,7 +52,7 @@ public class MultiProducerSequencer implements Sequencer
      * <p>每次申请生产序号都实时获取消费序号<br>
      * 会触发对消费者 sequence 强一致的读, 迫使消费者线程所在的 CPU 刷新缓存, 而这是不需要的
      */
-    private final    Sequence     gatingSequenceCache     = new Sequence();
+    private final    Sequence     gatingSequenceCache = new Sequence();
 
     // ----------------------------------------
 
@@ -111,9 +112,9 @@ public class MultiProducerSequencer implements Sequencer
     }
 
     @Override
-    public Sequence getCurrentProducerSequence()
+    public Sequence getCursor()
     {
-        return currentProducerSequence;
+        return cursor;
     }
 
     // ----------------------------------------
@@ -121,31 +122,25 @@ public class MultiProducerSequencer implements Sequencer
     @Override
     public SequenceBarrier newBarrier()
     {
-        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, new Sequence[0]);
+        return new SequenceBarrier(this, waitStrategy, cursor, new Sequence[0]);
     }
 
     @Override
-    public SequenceBarrier newBarrier(Sequence... dependenceSequences)
+    public SequenceBarrier newBarrier(Sequence... sequencesToTrack)
     {
-        return new SequenceBarrier(this, currentProducerSequence, waitStrategy, dependenceSequences);
+        return new SequenceBarrier(this, waitStrategy, cursor, sequencesToTrack);
     }
 
     @Override
-    public void addGatingConsumerSequence(Sequence newGatingConsumerSequence)
+    public void addGatingSequences(Sequence... gatingSequences)
     {
-        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, currentProducerSequence, newGatingConsumerSequence);
+        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, cursor, gatingSequences);
     }
 
     @Override
-    public void addGatingConsumerSequenceList(Sequence... newGatingConsumerSequences)
+    public void removeGatingSequence(Sequence sequence)
     {
-        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, currentProducerSequence, newGatingConsumerSequences);
-    }
-
-    @Override
-    public void removeGatingConsumerSequence(Sequence sequenceNeedRemove)
-    {
-        SequenceGroups.removeSequence(this, SEQUENCE_UPDATER, sequenceNeedRemove);
+        SequenceGroups.removeSequence(this, SEQUENCE_UPDATER, sequence);
     }
 
     // ----------------------------------------
@@ -164,18 +159,18 @@ public class MultiProducerSequencer implements Sequencer
 
         do
         {
-            current = currentProducerSequence.get();
+            current = cursor.get();
             next    = current + n;
 
             // volatile 读 gatingSequenceCache, 因为多生产者环境下会并发读写 gatingSequenceCache
-            long wrapPoint            = next - bufferSize;                    // 上一轮覆盖点
+            long wrapPoint            = next - bufferSize;         // 上一轮覆盖点
             long cachedGatingSequence = gatingSequenceCache.get(); // 缓存的最小消费序号
 
             // wrapPoint <= cachedGatingSequence 才是可以申请的
             // 当生产者发现已超过消费者一圈, 就必须去读最新的消费序号了, 看看消费者的消费进度是否推进了
             if (wrapPoint > cachedGatingSequence)
             {
-                long gatingSequence = SequenceUtil.getMinimumSequence(gatingConsumerSequences, current);
+                long gatingSequence = SequenceUtil.getMinimumSequence(gatingSequences, current);
 
                 if (wrapPoint > gatingSequence)
                 {
@@ -185,8 +180,12 @@ public class MultiProducerSequencer implements Sequencer
 
                 gatingSequenceCache.set(gatingSequence);
             }
-            else if (currentProducerSequence.compareAndSet(current, next)) break;
-        } while (true);
+            else if (cursor.compareAndSet(current, next))
+            {
+                break;
+            }
+        }
+        while (true);
 
         return next;
     }
@@ -196,7 +195,7 @@ public class MultiProducerSequencer implements Sequencer
     {
         setAvailable(publishIndex);
         System.out.println(Thread.currentThread().getName() + " 生产者发布事件序号: " + publishIndex); // TODO 为了测试
-        waitStrategy.signalWhenBlocking();
+        waitStrategy.signalAllWhenBlocking();
     }
 
     // ----------------------------------------
@@ -204,17 +203,17 @@ public class MultiProducerSequencer implements Sequencer
     /**
      * 获取 "连续的 + 已发布的 + 最大的" 生产序号
      *
-     * @param lowBound          下一个需要消费的序号
+     * @param lowerBound        下一个需要消费的序号
      * @param availableSequence 最大可消费序号
      * @return "连续的 + 已发布的 + 最大的" 生产序号
      */
     @Override
-    public long getHighestPublishedSequence(long lowBound, long availableSequence)
+    public long getHighestPublishedSequence(long lowerBound, long availableSequence)
     {
         // lowBound 是消费者传入的, 保证是已发布的生产序号
 
         // lowBound 和 availableSequence 中间存在未发布的生产序号
-        for (long sequence = lowBound; sequence <= availableSequence; sequence++)
+        for (long sequence = lowerBound; sequence <= availableSequence; sequence++)
         {
             if (!isAvailable(sequence))
             {
@@ -230,7 +229,7 @@ public class MultiProducerSequencer implements Sequencer
 
     public boolean isAvailable(long sequence)
     {
-        int  index         = calculateIndex(sequence);           // sequence 下标
+        int  index         = calculateIndex(sequence);            // sequence 下标
         int  flag          = calculateAvailabilityFlag(sequence); // sequence 覆盖次数
         long bufferAddress = (index * SCALE) + BASE;    // availableBuffer[index] 地址
 
@@ -241,7 +240,7 @@ public class MultiProducerSequencer implements Sequencer
 
     private void setAvailable(long sequence)
     {
-        int index = calculateIndex(sequence);           // sequence 下标
+        int index = calculateIndex(sequence);            // sequence 下标
         int flag  = calculateAvailabilityFlag(sequence); // sequence 覆盖次数
         setAvailableBufferValue(index, flag);
     }

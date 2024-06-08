@@ -13,20 +13,20 @@ public class BusySpinWaitStrategy implements WaitStrategy
     /**
      * <p>等待给定的序号可供使用, 由消费者调用
      *
-     * @param currentConsumeSequence  下一个需要消费的序号
-     * @param currentProducerSequence 生产序号
-     * @param dependentSequences      当前消费者所依赖的上游消费者序号数组
+     * @param sequence           下一个需要消费的序号
+     * @param cursor             生产序号
+     * @param dependentSequences 当前消费者所依赖的上游消费者序号数组
      * @return 最大可消费序号
      */
     @Override
-    public long waitFor(long currentConsumeSequence,
-                        Sequence currentProducerSequence,
+    public long waitFor(long sequence,
+                        Sequence cursor,
                         Sequence[] dependentSequences,
                         SequenceBarrier barrier) throws InterruptedException, AlertException
     {
         long availableSequence;
 
-        while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence)
+        while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < sequence)
         {
             // 每次循环都检查运行状态
             barrier.checkAlert();
@@ -40,7 +40,7 @@ public class BusySpinWaitStrategy implements WaitStrategy
     }
 
     @Override
-    public void signalWhenBlocking()
+    public void signalAllWhenBlocking()
     {
     }
 }

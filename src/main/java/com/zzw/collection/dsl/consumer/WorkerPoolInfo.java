@@ -58,6 +58,6 @@ public class WorkerPoolInfo<T> implements ConsumerInfo
     @Override
     public Sequence[] getSequences()
     {
-        return workerPool.getCurrentWorkerSequences();
+        return workerPool.getWorkerSequences();
     }
 }
