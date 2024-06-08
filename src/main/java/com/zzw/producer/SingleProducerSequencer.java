@@ -119,7 +119,7 @@ public class SingleProducerSequencer implements Sequencer
     @Override
     public void removeGatingConsumerSequence(Sequence sequenceNeedRemove)
     {
-        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, sequenceNeedRemove);
+        SequenceGroups.removeSequence(this, SEQUENCE_UPDATER, sequenceNeedRemove);
     }
 
     // =============================================================================
