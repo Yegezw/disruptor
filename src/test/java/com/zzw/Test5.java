@@ -8,7 +8,6 @@ import com.zzw.collection.dsl.EventHandlerGroup;
 import com.zzw.collection.dsl.producer.ProducerType;
 import com.zzw.consumer.OrderEventHandler;
 import com.zzw.relation.wait.BlockingWaitStrategy;
-import com.zzw.util.Util;
 
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -17,20 +16,18 @@ import java.util.concurrent.TimeUnit;
 public class Test5
 {
 
-    private static Disruptor<OrderEvent> getDisruptor()
+    private static ThreadPoolExecutor    pool;
+    private static Disruptor<OrderEvent> disruptor;
+
+    private static void init()
     {
-        ThreadPoolExecutor pool = new ThreadPoolExecutor(
+        pool      = new ThreadPoolExecutor(
                 10,
                 10, 0L, TimeUnit.MICROSECONDS,
                 new SynchronousQueue<>(),
-                r ->
-                {
-                    Thread thread = new Thread(r);
-                    thread.setDaemon(true); // 注意
-                    return thread;
-                }
+                r -> new Thread(r)
         );
-        return new Disruptor<>(
+        disruptor = new Disruptor<>(
                 new OrderEventFactory(),
                 128,
                 pool,
@@ -44,7 +41,7 @@ public class Test5
     //             \ ->    E    -> F
     public static void main(String[] args)
     {
-        Disruptor<OrderEvent> disruptor = getDisruptor();
+        init();
 
         // ======================================================================================
 
@@ -79,11 +76,13 @@ public class Test5
             ringBuffer.publish(nextIndex);
         }
 
+        // ======================================================================================
+
         // 等所有消费者线程 "把已生产的事件全部消费完成" 后, 停止所有消费者线程
         // 因为生产者已将发布了 100 个事件, 因此消费者链条中的每个消费者都会消费完 100 个事件
         disruptor.shutdown();
 
-        Util.sleep(1000);
         System.out.println("disruptor shutdown");
+        pool.shutdown(); // 关闭线程池
     }
 }
