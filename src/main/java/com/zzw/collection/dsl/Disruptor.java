@@ -98,12 +98,12 @@ public class Disruptor<T>
     /**
      * 注册单线程消费者(依赖生产序号 + 无上游依赖)
      *
-     * @param EventHandlers 用户自定义的事件处理器数组
+     * @param eventHandlers 用户自定义的事件处理器数组
      */
     @SafeVarargs
-    public final EventHandlerGroup<T> handleEventsWith(final EventHandler<T>... EventHandlers)
+    public final EventHandlerGroup<T> handleEventsWith(final EventHandler<? super T>... eventHandlers)
     {
-        return createEventProcessors(new Sequence[0], EventHandlers);
+        return createEventProcessors(new Sequence[0], eventHandlers);
     }
 
     /**
@@ -112,23 +112,22 @@ public class Disruptor<T>
      * @param barrierSequences 依赖的上游消费序号数组
      * @param eventHandlers    用户自定义的事件处理器数组
      */
-    EventHandlerGroup<T> createEventProcessors(final Sequence[] barrierSequences, final EventHandler<T>[] eventHandlers)
+    EventHandlerGroup<T> createEventProcessors(final Sequence[] barrierSequences,
+                                               final EventHandler<? super T>[] eventHandlers)
     {
         final SequenceBarrier barrier            = ringBuffer.newBarrier(barrierSequences); // 序号屏障
         final Sequence[]      processorSequences = new Sequence[eventHandlers.length];      // 消费序号
 
-        int i = 0;
-        for (EventHandler<T> EventConsumer : eventHandlers)
+        for (int i = 0, eventHandlersLength = eventHandlers.length; i < eventHandlersLength; i++)
         {
+            final EventHandler<? super T> eventHandler = eventHandlers[i];
+
             // 创建单线程消费者
-            final BatchEventProcessor<T> batchEventProcessor = new BatchEventProcessor<>(ringBuffer, EventConsumer, barrier);
+            final BatchEventProcessor<T> batchEventProcessor =
+                    new BatchEventProcessor<>(ringBuffer, barrier, eventHandler);
 
-            // 记录消费者的消费序号
-            processorSequences[i] = batchEventProcessor.getCurrentConsumeSequence();
-            i++;
-
-            // 将消费者加入仓库
-            consumerRepository.add(batchEventProcessor);
+            consumerRepository.add(batchEventProcessor);               // 将消费者加入仓库
+            processorSequences[i] = batchEventProcessor.getSequence(); // 记录消费者的消费序号
         }
 
         // 更新当前生产者注册的消费序号
@@ -155,7 +154,8 @@ public class Disruptor<T>
      * @param barrierSequences 依赖的上游消费序号数组
      * @param workHandlers     用户自定义的事件处理器数组
      */
-    EventHandlerGroup<T> createWorkerPool(final Sequence[] barrierSequences, final WorkHandler<T>[] workHandlers)
+    EventHandlerGroup<T> createWorkerPool(final Sequence[] barrierSequences,
+                                          final WorkHandler<? super T>[] workHandlers)
     {
         // 序号屏障
         final SequenceBarrier sequenceBarrier = ringBuffer.newBarrier(barrierSequences);
@@ -166,14 +166,14 @@ public class Disruptor<T>
         consumerRepository.add(workerPool);
 
         // 消费者池的消费序号
-        final Sequence[] workerSequences = workerPool.getCurrentWorkerSequences();
+        final Sequence[] workerSequences = workerPool.getWorkerSequences();
 
         // 更新当前生产者注册的消费序号
         updateGatingSequencesForNextInChain(barrierSequences, workerSequences);
         return new EventHandlerGroup<>(this, consumerRepository, workerSequences);
     }
 
-    // =============================================================================
+    // ----------------------------------------
 
     /**
      * 更新当前生产者注册的消费序号
@@ -181,7 +181,8 @@ public class Disruptor<T>
      * @param barrierSequences   依赖的上游消费序号数组
      * @param processorSequences 当前消费者的消费序号数组
      */
-    private void updateGatingSequencesForNextInChain(final Sequence[] barrierSequences, final Sequence[] processorSequences)
+    private void updateGatingSequencesForNextInChain(final Sequence[] barrierSequences,
+                                                     final Sequence[] processorSequences)
     {
         // 这是一个优化操作
         // 只需要监控 "消费者链条最末端的序号", 因为它们是最慢的消费序号
@@ -189,17 +190,17 @@ public class Disruptor<T>
         if (processorSequences.length > 0)
         {
             // 从生产者监控的消费序号中删除 barrierSequences
-            for (Sequence sequence : barrierSequences)
+            for (final Sequence sequence : barrierSequences)
             {
-                ringBuffer.removeGatingConsumerSequence(sequence);
+                ringBuffer.removeGatingSequence(sequence);
             }
 
             // 向生产者添加多个需要监控的消费序号 processorSequences
-            ringBuffer.addGatingConsumerSequenceList(processorSequences);
-        }
+            ringBuffer.addGatingSequences(processorSequences);
 
-        // 将 barrierSequences 所属的 ConsumerInfo.endOfChain 标记为 "非最尾端的消费者"(用于 shutdown 优雅停止)
-        consumerRepository.unMarkEventProcessorsAsEndOfChain(barrierSequences);
+            // 将 barrierSequences 所属的 ConsumerInfo.endOfChain 标记为 "非最尾端的消费者"(用于 shutdown 优雅停止)
+            consumerRepository.unMarkEventProcessorsAsEndOfChain(barrierSequences);
+        }
     }
 
     // =============================================================================
@@ -218,7 +219,22 @@ public class Disruptor<T>
     /**
      * 等所有消费者线程 "把已生产的事件全部消费完成" 后, 再停止所有消费者线程
      */
-    public void shutdown(long timeout, TimeUnit timeUnit)
+    public void shutdown()
+    {
+        try
+        {
+            shutdown(-1, TimeUnit.MICROSECONDS);
+        }
+        catch (final TimeoutException e)
+        {
+            throw new RuntimeException("disruptor shutdown 操作, 等待超时");
+        }
+    }
+
+    /**
+     * 等所有消费者线程 "把已生产的事件全部消费完成" 后, 再停止所有消费者线程
+     */
+    public void shutdown(long timeout, TimeUnit timeUnit) throws TimeoutException
     {
         final long timeOutAt = System.currentTimeMillis() + timeUnit.toMillis(timeout);
 
@@ -226,7 +242,7 @@ public class Disruptor<T>
         {
             if (timeout >= 0 && System.currentTimeMillis() > timeOutAt)
             {
-                throw new RuntimeException("disruptor shutdown 操作, 等待超时");
+                throw TimeoutException.INSTANCE;
             }
             // Busy spin
         }
@@ -241,7 +257,7 @@ public class Disruptor<T>
      */
     private boolean hasBacklog()
     {
-        final long cursor = ringBuffer.getCurrentProducerSequence().get();
+        final long cursor = ringBuffer.getCursor().get();
 
         // 获取所有处于最尾端的消费者序号(最尾端的是最慢的, 所以是准确的)
         for (final Sequence consumer : consumerRepository.getLastSequenceInChain())

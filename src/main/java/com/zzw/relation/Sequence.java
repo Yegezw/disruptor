@@ -61,20 +61,23 @@ public class Sequence
         return value;
     }
 
-    public void set(long value)
-    {
-        this.value = value;
-    }
-
     /**
      * 对 value 的写操作, 只保证有序性, 不保证可见性
      */
-    public void lazySet(long value)
+    public void set(long value)
     {
         // StoreStore barrier
         // this.value = value
         // 不会立即强制 CPU 刷新缓存, 导致其修改的最新值对其它 CPU 核心来说不是立即可见的(延迟几纳秒)
         UNSAFE.putOrderedLong(this, VALUE_OFFSET, value);
+    }
+
+    public void setVolatile(long value)
+    {
+        // StoreStore barrier
+        // this.value = value
+        // StoreLoad barrier
+        UNSAFE.putLongVolatile(this, VALUE_OFFSET, value);
     }
 
     public boolean compareAndSet(long expect, long update)

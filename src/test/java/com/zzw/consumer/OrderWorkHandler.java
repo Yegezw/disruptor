@@ -8,7 +8,7 @@ import com.zzw.collection.OrderEvent;
 public class OrderWorkHandler implements WorkHandler<OrderEvent>
 {
 
-    private String consumerName;
+    private final String consumerName;
 
     public OrderWorkHandler(String consumerName)
     {
@@ -16,7 +16,7 @@ public class OrderWorkHandler implements WorkHandler<OrderEvent>
     }
 
     @Override
-    public void consume(OrderEvent event)
+    public void onEvent(OrderEvent event)
     {
         System.out.println(consumerName + " 消费者消费事件: " + event);
     }

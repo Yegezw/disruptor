@@ -14,16 +14,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BatchEventProcessor<T> implements EventProcessor
 {
 
-    private final RingBuffer<T>   ringBuffer;
-    private final EventHandler<T> eventConsumer;
-    private final AtomicBoolean   running = new AtomicBoolean(false);
+    private final RingBuffer<T>           ringBuffer;
+    private final EventHandler<? super T> eventHandler;
+    private final AtomicBoolean           running = new AtomicBoolean(false);
 
     // ----------------------------------------
 
     /**
      * 消费序号
      */
-    private final Sequence        currentConsumeSequence = new Sequence(-1);
+    private final Sequence        sequence = new Sequence(-1);
     /**
      * 消费序号屏障
      */
@@ -32,18 +32,18 @@ public class BatchEventProcessor<T> implements EventProcessor
     // =============================================================================
 
     public BatchEventProcessor(RingBuffer<T> ringBuffer,
-                               EventHandler<T> eventConsumer,
-                               SequenceBarrier sequenceBarrier)
+                               SequenceBarrier sequenceBarrier,
+                               EventHandler<? super T> eventHandler)
     {
         this.ringBuffer      = ringBuffer;
-        this.eventConsumer   = eventConsumer;
         this.sequenceBarrier = sequenceBarrier;
+        this.eventHandler    = eventHandler;
     }
 
     @Override
-    public Sequence getCurrentConsumeSequence()
+    public Sequence getSequence()
     {
-        return currentConsumeSequence;
+        return sequence;
     }
 
     // =============================================================================
@@ -58,31 +58,31 @@ public class BatchEventProcessor<T> implements EventProcessor
         sequenceBarrier.clearAlert();
 
         // 下一个需要消费的序号
-        long nextConsumerIndex = currentConsumeSequence.get() + 1;
+        long nextSequence = sequence.get() + 1;
 
         // 消费者线程主循环逻辑, 不断的尝试获取事件并进行消费(为了让代码更简单, 暂不考虑优雅停止消费者线程的功能)
         while (true)
         {
-            Util.sleep(200); // 为了测试, 让消费者慢一点
+            Util.sleep(200); // TODO 为了测试, 让消费者慢一点
 
             try
             {
                 // 可能会抛出 AlertException 异常
-                long availableConsumeIndex = this.sequenceBarrier.getAvailableConsumeSequence(nextConsumerIndex);
+                long availableSequence = sequenceBarrier.waitFor(nextSequence);
 
-                while (nextConsumerIndex <= availableConsumeIndex)
+                while (nextSequence <= availableSequence)
                 {
                     // 取出可以消费的下标对应的事件, 交给 eventConsumer 消费
-                    T event = ringBuffer.get(nextConsumerIndex);
-                    this.eventConsumer.consume(event, nextConsumerIndex, nextConsumerIndex == availableConsumeIndex);
+                    T event = ringBuffer.get(nextSequence);
+                    eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
                     // 批处理, 一次主循环消费 N 个事件(下标加 1, 消费下一个事件)
-                    nextConsumerIndex++;
+                    nextSequence++;
                 }
 
                 // 更新当前消费者的消费序号
-                // lazySet 保证消费者对事件对象的读操作, 一定先于对消费者 Sequence 的更新
-                // lazySet 不需要生产者实时的强感知, 这样性能更好, 因为生产者自己也不是实时的读消费者序号的
-                this.currentConsumeSequence.lazySet(availableConsumeIndex);
+                // set 保证消费者对事件对象的读操作, 一定先于对消费者 Sequence 的更新
+                // set 不需要生产者实时的强感知, 这样性能更好, 因为生产者自己也不是实时的读消费者序号的
+                sequence.set(availableSequence);
             }
             catch (final AlertException ex)
             {
@@ -90,15 +90,15 @@ public class BatchEventProcessor<T> implements EventProcessor
                 // running == false, break 跳出主循环, 运行结束
                 if (!running.get())
                 {
-                    System.out.println(Thread.currentThread().getName() + " " + eventConsumer.getName() + " 退出");
+                    System.out.println(Thread.currentThread().getName() + " " + eventHandler.getName() + " 退出"); // TODO 为了测试
                     break;
                 }
             }
             catch (final Throwable ex)
             {
                 // 发生异常, 消费进度依然推进(跳过这一批拉取的数据)
-                this.currentConsumeSequence.lazySet(nextConsumerIndex);
-                nextConsumerIndex++;
+                sequence.set(nextSequence);
+                nextSequence++;
             }
         }
     }

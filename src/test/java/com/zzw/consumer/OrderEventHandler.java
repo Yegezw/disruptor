@@ -8,7 +8,7 @@ import com.zzw.collection.OrderEvent;
 public class OrderEventHandler implements EventHandler<OrderEvent>
 {
 
-    private String consumerName;
+    private final String consumerName;
 
     public OrderEventHandler(String consumerName)
     {
@@ -23,7 +23,7 @@ public class OrderEventHandler implements EventHandler<OrderEvent>
      * @param endOfBatch 当前事件是否是这一批事件中的最后一个
      */
     @Override
-    public void consume(OrderEvent event, long sequence, boolean endOfBatch)
+    public void onEvent(OrderEvent event, long sequence, boolean endOfBatch)
     {
         System.out.println(consumerName + " 消费者消费事件: " + event + " sequence = " + sequence + " endOfBatch = " + endOfBatch);
     }

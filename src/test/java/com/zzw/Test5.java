@@ -81,7 +81,7 @@ public class Test5
 
         // 等所有消费者线程 "把已生产的事件全部消费完成" 后, 停止所有消费者线程
         // 因为生产者已将发布了 100 个事件, 因此消费者链条中的每个消费者都会消费完 100 个事件
-        disruptor.shutdown(5, TimeUnit.SECONDS);
+        disruptor.shutdown();
 
         Util.sleep(1000);
         System.out.println("disruptor shutdown");

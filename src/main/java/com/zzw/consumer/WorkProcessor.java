@@ -13,13 +13,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WorkProcessor<T> implements EventProcessor
 {
 
-    private final RingBuffer<T>  ringBuffer;
-    private final WorkHandler<T> workHandler;
+    private final RingBuffer<T>          ringBuffer;
+    private final WorkHandler<? super T> workHandler;
     /**
      * 消费序号
      */
-    private final Sequence       currentConsumeSequence = new Sequence(-1);
-    private final AtomicBoolean  running                = new AtomicBoolean(false);
+    private final Sequence               sequence = new Sequence(-1);
+    private final AtomicBoolean          running  = new AtomicBoolean(false);
 
     // ----------------------------------------
 
@@ -36,20 +36,20 @@ public class WorkProcessor<T> implements EventProcessor
     // =============================================================================
 
     public WorkProcessor(RingBuffer<T> ringBuffer,
-                         WorkHandler<T> workHandler,
                          SequenceBarrier sequenceBarrier,
+                         WorkHandler<? super T> workHandler,
                          Sequence workSequence)
     {
         this.ringBuffer      = ringBuffer;
-        this.workHandler     = workHandler;
         this.sequenceBarrier = sequenceBarrier;
+        this.workHandler     = workHandler;
         this.workSequence    = workSequence;
     }
 
     @Override
-    public Sequence getCurrentConsumeSequence()
+    public Sequence getSequence()
     {
-        return currentConsumeSequence;
+        return sequence;
     }
 
     // =============================================================================
@@ -64,13 +64,13 @@ public class WorkProcessor<T> implements EventProcessor
         sequenceBarrier.clearAlert();
 
         // 下一个需要消费的序号
-        long nextConsumerIndex = this.currentConsumeSequence.get() + 1;
+        long nextSequence = sequence.get();
 
         // 设置哨兵值
         // 保证第一次循环时, nextConsumerIndex <= cachedAvailableSequence 一定为 false
         // 走 else 分支, 通过序号屏障获得最大的可用序号号
         long    cachedAvailableSequence = Long.MIN_VALUE; // 缓存的最大可消费序号
-        boolean processedSequence       = true;              // 最近是否处理过了序号
+        boolean processedSequence       = true;           // 最近是否处理过了序号
 
         while (true)
         {
@@ -85,12 +85,12 @@ public class WorkProcessor<T> implements EventProcessor
                     // 如果已经处理过序号, 则重新 CAS 的争抢一个新的待消费序号
                     do
                     {
-                        nextConsumerIndex = this.workSequence.get() + 1L;
+                        nextSequence = workSequence.get() + 1L;
 
                         // 由于 currentConsumeSequence 会被注册到生产者
                         // 因此需要始终和 workSequence 保持协调
                         // 即当前 currentConsumeSequence = workSequence
-                        this.currentConsumeSequence.lazySet(nextConsumerIndex - 1L);
+                        sequence.set(nextSequence - 1L);
 
                         // 问题: 只使用 workSequence, 每个 worker 不维护 currentConsumeSequence 行不行
                         // 回答: 这是不行的
@@ -102,7 +102,8 @@ public class WorkProcessor<T> implements EventProcessor
                         // 2、对外的约束依然需要 workProcessor 本地的消费者序号 currentConsumeSequence 来控制
 
                         // CAS 更新, 保证每个 worker 线程都会获取到唯一的一个 sequence
-                    } while (!workSequence.compareAndSet(nextConsumerIndex - 1L, nextConsumerIndex));
+                    }
+                    while (!workSequence.compareAndSet(nextSequence - 1L, nextSequence));
                 }
                 else
                 {
@@ -115,11 +116,11 @@ public class WorkProcessor<T> implements EventProcessor
                 // cachedAvailableSequence 只会存在两种情况
                 // 1、第一次循环, 初始化为 Long.MIN_VALUE, 则必定会走到下面的 else 分支中
                 // 2、非第一次循环, 则 cachedAvailableSequence 为序号屏障所允许的最大可消费序号
-                if (nextConsumerIndex <= cachedAvailableSequence)
+                if (nextSequence <= cachedAvailableSequence)
                 {
                     // 取出可以消费的下标所对应的事件, 交给 eventConsumer 消费
-                    T event = ringBuffer.get(nextConsumerIndex);
-                    this.workHandler.consume(event);
+                    T event = ringBuffer.get(nextSequence);
+                    workHandler.onEvent(event);
 
                     // 实际调用消费者进行消费了, 标记为 true, 这样一来就可以在下次循环中 CAS 争抢下一个新的消费序号了
                     processedSequence = true;
@@ -129,7 +130,7 @@ public class WorkProcessor<T> implements EventProcessor
                     // 1、第一次循环, 获取当前序号屏障的最大可消费序号
                     // 2、非第一次循环, 说明争抢到的序号 > "缓存的最大可消费序号", 等待 "生产者/上游消费者" 推进到争抢到的 nextConsumerIndex
                     // 可能会抛出 AlertException 异常
-                    cachedAvailableSequence = sequenceBarrier.getAvailableConsumeSequence(nextConsumerIndex);
+                    cachedAvailableSequence = sequenceBarrier.waitFor(nextSequence);
                 }
             }
             catch (final AlertException ex)
@@ -138,7 +139,7 @@ public class WorkProcessor<T> implements EventProcessor
                 // running == false, break 跳出主循环, 运行结束
                 if (!running.get())
                 {
-                    System.out.println(Thread.currentThread().getName() + " " + workHandler.getName() + " 退出");
+                    System.out.println(Thread.currentThread().getName() + " " + workHandler.getName() + " 退出"); // TODO 为了测试
                     break;
                 }
             }

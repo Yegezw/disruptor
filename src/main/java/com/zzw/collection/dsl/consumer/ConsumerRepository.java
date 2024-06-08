@@ -29,14 +29,14 @@ public class ConsumerRepository<T>
     public void add(final EventProcessor processor)
     {
         final EventProcessorInfo<T> consumerInfo = new EventProcessorInfo<>(processor);
-        eventProcessorInfoBySequence.put(processor.getCurrentConsumeSequence(), consumerInfo);
+        eventProcessorInfoBySequence.put(processor.getSequence(), consumerInfo);
         consumerInfos.add(consumerInfo);
     }
 
     public void add(final WorkerPool<T> workerPool)
     {
         final WorkerPoolInfo<T> workerPoolInfo = new WorkerPoolInfo<>(workerPool);
-        for (Sequence sequence : workerPool.getCurrentWorkerSequences())
+        for (Sequence sequence : workerPool.getWorkerSequences())
         {
             eventProcessorInfoBySequence.put(sequence, workerPoolInfo);
         }

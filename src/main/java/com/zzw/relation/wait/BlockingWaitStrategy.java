@@ -21,25 +21,25 @@ public class BlockingWaitStrategy implements WaitStrategy
      * <p>等待给定的序号可供使用, 由消费者调用
      * <p>类似 Condition.await, 如果不满足条件就会阻塞在该方法内不返回
      *
-     * @param currentConsumeSequence  下一个需要消费的序号
-     * @param currentProducerSequence 生产序号
-     * @param dependentSequences      当前消费者所依赖的上游消费者序号数组
+     * @param sequence           下一个需要消费的序号
+     * @param cursor             生产序号
+     * @param dependentSequences 当前消费者所依赖的上游消费者序号数组
      * @return 最大可消费序号
      */
     @Override
-    public long waitFor(long currentConsumeSequence,
-                        Sequence currentProducerSequence,
+    public long waitFor(long sequence,
+                        Sequence cursor,
                         Sequence[] dependentSequences,
                         SequenceBarrier barrier) throws InterruptedException, AlertException
     {
         // 如果 ringBuffer 的生产序号 < 当前所需消费序号, 说明目前消费速度 > 生产速度
         // 强一致的读生产序号, 看看生产者的生产进度是否推进了
-        if (currentProducerSequence.get() < currentConsumeSequence)
+        if (cursor.get() < sequence)
         {
             lock.lock();
             try
             {
-                while (currentProducerSequence.get() < currentConsumeSequence)
+                while (cursor.get() < sequence)
                 {
                     // 每次循环都检查运行状态(被锁保护, 不会出现丢失 signal 信号的问题)
                     barrier.checkAlert();
@@ -61,7 +61,7 @@ public class BlockingWaitStrategy implements WaitStrategy
         {
             // 受制于屏障中的 dependentSequences
             // 用来控制当前消费者的消费进度 <= 其依赖的上游消费者的消费者进度
-            while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < currentConsumeSequence)
+            while ((availableSequence = SequenceUtil.getMinimumSequence(dependentSequences)) < sequence)
             {
                 // 每次循环都检查运行状态
                 barrier.checkAlert();
@@ -74,7 +74,7 @@ public class BlockingWaitStrategy implements WaitStrategy
         else
         {
             // 并不存在依赖的上游消费者, 大于当前消费进度的生产者序号就是可用的消费序号
-            availableSequence = currentProducerSequence.get();
+            availableSequence = cursor.get();
         }
 
         return availableSequence;
@@ -84,7 +84,7 @@ public class BlockingWaitStrategy implements WaitStrategy
      * 类似 Condition.signal, 唤醒 waitFor 阻塞在该等待策略对象上的消费者线程, 由生产者调用
      */
     @Override
-    public void signalWhenBlocking()
+    public void signalAllWhenBlocking()
     {
         lock.lock();
         try
