@@ -3,6 +3,7 @@ package com.zzw;
 import com.zzw.collection.OrderEvent;
 import com.zzw.collection.OrderEventFactory;
 import com.zzw.collection.RingBuffer;
+import com.zzw.collection.dsl.ExceptionHandlerWrapper;
 import com.zzw.consumer.BatchEventProcessor;
 import com.zzw.consumer.OrderEventHandler;
 import com.zzw.consumer.OrderWorkHandler;
@@ -52,6 +53,7 @@ public class Test2
         WorkerPool<OrderEvent> workPoolB = new WorkerPool<>(
                 ringBuffer,
                 sequenceBarrierA,
+                new ExceptionHandlerWrapper<>(),
                 new OrderWorkHandler("consumerB1"),
                 new OrderWorkHandler("consumerB2"),
                 new OrderWorkHandler("consumerB3")

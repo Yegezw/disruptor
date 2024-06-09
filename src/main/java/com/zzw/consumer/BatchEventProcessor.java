@@ -1,6 +1,8 @@
 package com.zzw.consumer;
 
 import com.zzw.collection.RingBuffer;
+import com.zzw.collection.exception.ExceptionHandler;
+import com.zzw.collection.exception.ExceptionHandlers;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.AlertException;
@@ -14,9 +16,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BatchEventProcessor<T> implements EventProcessor
 {
 
-    private final RingBuffer<T>           ringBuffer;
-    private final EventHandler<? super T> eventHandler;
-    private final AtomicBoolean           running = new AtomicBoolean(false);
+    private final RingBuffer<T>               ringBuffer;
+    private final EventHandler<? super T>     eventHandler;
+    private       ExceptionHandler<? super T> exceptionHandler;
+    private final AtomicBoolean               running = new AtomicBoolean(false);
 
     // ----------------------------------------
 
@@ -48,6 +51,33 @@ public class BatchEventProcessor<T> implements EventProcessor
 
     // =============================================================================
 
+    public void setExceptionHandler(final ExceptionHandler<? super T> exceptionHandler)
+    {
+        if (null == exceptionHandler)
+        {
+            throw new NullPointerException();
+        }
+
+        this.exceptionHandler = exceptionHandler;
+    }
+
+    private ExceptionHandler<? super T> getExceptionHandler()
+    {
+        ExceptionHandler<? super T> handler = exceptionHandler;
+        if (handler == null)
+        {
+            return ExceptionHandlers.defaultHandler();
+        }
+        return handler;
+    }
+
+    private void handleEventException(final Throwable ex, final long sequence, final T event)
+    {
+        getExceptionHandler().handleEventException(ex, sequence, event);
+    }
+
+    // =============================================================================
+
     @Override
     public void run()
     {
@@ -57,6 +87,7 @@ public class BatchEventProcessor<T> implements EventProcessor
         }
         sequenceBarrier.clearAlert();
 
+        T event = null;
         // 下一个需要消费的序号
         long nextSequence = sequence.get() + 1;
 
@@ -73,7 +104,7 @@ public class BatchEventProcessor<T> implements EventProcessor
                 while (nextSequence <= availableSequence)
                 {
                     // 取出可以消费的下标对应的事件, 交给 eventConsumer 消费
-                    T event = ringBuffer.get(nextSequence);
+                    event = ringBuffer.get(nextSequence);
                     eventHandler.onEvent(event, nextSequence, nextSequence == availableSequence);
                     // 批处理, 一次主循环消费 N 个事件(下标加 1, 消费下一个事件)
                     nextSequence++;
@@ -96,7 +127,8 @@ public class BatchEventProcessor<T> implements EventProcessor
             }
             catch (final Throwable ex)
             {
-                // 发生异常, 消费进度依然推进(跳过这一批拉取的数据)
+                handleEventException(ex, nextSequence, event);
+                // 消费者消费时发生了异常, 也认为是成功消费了, 消费进度依然推进
                 sequence.set(nextSequence);
                 nextSequence++;
             }
