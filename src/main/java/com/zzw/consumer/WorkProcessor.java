@@ -1,6 +1,7 @@
 package com.zzw.consumer;
 
 import com.zzw.collection.RingBuffer;
+import com.zzw.collection.exception.ExceptionHandler;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.AlertException;
@@ -13,13 +14,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class WorkProcessor<T> implements EventProcessor
 {
 
-    private final RingBuffer<T>          ringBuffer;
-    private final WorkHandler<? super T> workHandler;
+    private final RingBuffer<T>               ringBuffer;
+    private final WorkHandler<? super T>      workHandler;
+    private final ExceptionHandler<? super T> exceptionHandler;
     /**
      * 消费序号
      */
-    private final Sequence               sequence = new Sequence(-1);
-    private final AtomicBoolean          running  = new AtomicBoolean(false);
+    private final Sequence                    sequence = new Sequence(-1);
+    private final AtomicBoolean               running  = new AtomicBoolean(false);
 
     // ----------------------------------------
 
@@ -38,12 +40,14 @@ public class WorkProcessor<T> implements EventProcessor
     public WorkProcessor(RingBuffer<T> ringBuffer,
                          SequenceBarrier sequenceBarrier,
                          WorkHandler<? super T> workHandler,
+                         ExceptionHandler<? super T> exceptionHandler,
                          Sequence workSequence)
     {
-        this.ringBuffer      = ringBuffer;
-        this.sequenceBarrier = sequenceBarrier;
-        this.workHandler     = workHandler;
-        this.workSequence    = workSequence;
+        this.ringBuffer       = ringBuffer;
+        this.sequenceBarrier  = sequenceBarrier;
+        this.workHandler      = workHandler;
+        this.exceptionHandler = exceptionHandler;
+        this.workSequence     = workSequence;
     }
 
     @Override
@@ -63,6 +67,7 @@ public class WorkProcessor<T> implements EventProcessor
         }
         sequenceBarrier.clearAlert();
 
+        T event = null;
         // 下一个需要消费的序号
         long nextSequence = sequence.get();
 
@@ -119,7 +124,7 @@ public class WorkProcessor<T> implements EventProcessor
                 if (nextSequence <= cachedAvailableSequence)
                 {
                     // 取出可以消费的下标所对应的事件, 交给 eventConsumer 消费
-                    T event = ringBuffer.get(nextSequence);
+                    event = ringBuffer.get(nextSequence);
                     workHandler.onEvent(event);
 
                     // 实际调用消费者进行消费了, 标记为 true, 这样一来就可以在下次循环中 CAS 争抢下一个新的消费序号了
@@ -145,6 +150,7 @@ public class WorkProcessor<T> implements EventProcessor
             }
             catch (final Throwable ex)
             {
+                exceptionHandler.handleEventException(ex, nextSequence, event);
                 // 消费者消费时发生了异常, 也认为是成功消费了, 下次循环会 CAS 争抢一个新的消费序号
                 processedSequence = true;
             }

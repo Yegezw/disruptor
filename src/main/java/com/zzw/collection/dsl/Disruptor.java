@@ -5,6 +5,7 @@ import com.zzw.collection.RingBuffer;
 import com.zzw.collection.dsl.consumer.ConsumerInfo;
 import com.zzw.collection.dsl.consumer.ConsumerRepository;
 import com.zzw.collection.dsl.producer.ProducerType;
+import com.zzw.collection.exception.ExceptionHandler;
 import com.zzw.consumer.BatchEventProcessor;
 import com.zzw.consumer.EventHandler;
 import com.zzw.consumer.WorkHandler;
@@ -43,6 +44,13 @@ public class Disruptor<T>
      */
     private final AtomicBoolean started = new AtomicBoolean(false);
 
+    // ----------------------------------------
+
+    /**
+     * 异常处理器
+     */
+    private ExceptionHandler<? super T> exceptionHandler = new ExceptionHandlerWrapper<>();
+
     // =============================================================================
 
     /**
@@ -63,6 +71,22 @@ public class Disruptor<T>
     {
         this.executor   = executor;
         this.ringBuffer = RingBuffer.create(producerType, eventFactory, bufferSize, waitStrategy);
+    }
+
+    public void handleExceptionsWith(final ExceptionHandler<? super T> exceptionHandler)
+    {
+        this.exceptionHandler = exceptionHandler;
+    }
+
+    @SuppressWarnings("unchecked")
+    public void setDefaultExceptionHandler(final ExceptionHandler<? super T> exceptionHandler)
+    {
+        checkNotStarted();
+        if (!(this.exceptionHandler instanceof ExceptionHandlerWrapper))
+        {
+            throw new IllegalStateException("setDefaultExceptionHandler can not be used after handleExceptionsWith");
+        }
+        ((ExceptionHandlerWrapper<T>) this.exceptionHandler).switchTo(exceptionHandler);
     }
 
     // =============================================================================
@@ -93,6 +117,14 @@ public class Disruptor<T>
         }
     }
 
+    private void checkNotStarted()
+    {
+        if (started.get())
+        {
+            throw new IllegalStateException("All event handlers must be added before calling starts.");
+        }
+    }
+
     // =============================================================================
 
     /**
@@ -115,6 +147,8 @@ public class Disruptor<T>
     EventHandlerGroup<T> createEventProcessors(final Sequence[] barrierSequences,
                                                final EventHandler<? super T>[] eventHandlers)
     {
+        checkNotStarted();
+
         final SequenceBarrier barrier            = ringBuffer.newBarrier(barrierSequences); // 序号屏障
         final Sequence[]      processorSequences = new Sequence[eventHandlers.length];      // 消费序号
 
@@ -125,6 +159,10 @@ public class Disruptor<T>
             // 创建单线程消费者
             final BatchEventProcessor<T> batchEventProcessor =
                     new BatchEventProcessor<>(ringBuffer, barrier, eventHandler);
+            if (exceptionHandler != null)
+            {
+                batchEventProcessor.setExceptionHandler(exceptionHandler);
+            }
 
             consumerRepository.add(batchEventProcessor);               // 将消费者加入仓库
             processorSequences[i] = batchEventProcessor.getSequence(); // 记录消费者的消费序号
@@ -161,7 +199,7 @@ public class Disruptor<T>
         final SequenceBarrier sequenceBarrier = ringBuffer.newBarrier(barrierSequences);
 
         // 创建多线程消费者池
-        final WorkerPool<T> workerPool = new WorkerPool<>(ringBuffer, sequenceBarrier, workHandlers);
+        final WorkerPool<T> workerPool = new WorkerPool<>(ringBuffer, sequenceBarrier, exceptionHandler, workHandlers);
         // 将消费者池加入仓库
         consumerRepository.add(workerPool);
 
@@ -227,7 +265,7 @@ public class Disruptor<T>
         }
         catch (final TimeoutException e)
         {
-            throw new RuntimeException("disruptor shutdown 操作, 等待超时");
+            exceptionHandler.handleOnShutdownException(e);
         }
     }
 

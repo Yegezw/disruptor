@@ -1,6 +1,7 @@
 package com.zzw.consumer;
 
 import com.zzw.collection.RingBuffer;
+import com.zzw.collection.exception.ExceptionHandler;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 
@@ -33,6 +34,7 @@ public class WorkerPool<T>
     @SafeVarargs
     public WorkerPool(RingBuffer<T> ringBuffer,
                       SequenceBarrier sequenceBarrier,
+                      ExceptionHandler<? super T> exceptionHandler,
                       WorkHandler<? super T>... workHandlers)
     {
         this.ringBuffer = ringBuffer;
@@ -46,6 +48,7 @@ public class WorkerPool<T>
                     ringBuffer,
                     sequenceBarrier,
                     workHandlers[i],
+                    exceptionHandler,
                     workSequence
             );
         }
