@@ -74,9 +74,17 @@ public interface Sequencer
     /**
      * 发布一个生产序号
      *
-     * @param publishIndex 需要发布的生产序号
+     * @param sequence 需要发布的生产序号
      */
-    void publish(long publishIndex);
+    void publish(long sequence);
+
+    /**
+     * 发布一批生产序号 [lo ... hi], 当所有事件都已填满时调用
+     *
+     * @param lo 需要发布的首生产序号
+     * @param hi 需要发布的尾生产序号
+     */
+    void publish(long lo, long hi);
 
     // ----------------------------------------
 

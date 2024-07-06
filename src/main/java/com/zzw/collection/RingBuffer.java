@@ -209,4 +209,12 @@ public class RingBuffer<E>
     {
         sequencer.publish(index);
     }
+
+    /**
+     * @see Sequencer#publish(long, long) 
+     */
+    public void publish(long lo, long hi)
+    {
+        sequencer.publish(lo, hi);
+    }
 }

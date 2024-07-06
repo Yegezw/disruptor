@@ -171,15 +171,21 @@ public class SingleProducerSequencer implements Sequencer
     }
 
     @Override
-    public void publish(long publishIndex)
+    public void publish(long sequence)
     {
         // 发布时, 更新生产者队列
         // lazySet 保证 publish() 执行前, 生产者对事件对象更新的写操作, 一定先于对生产者 Sequence 的更新
         // lazySet 由于消费者可以批量的拉取数据, 所以不必每次发布时都 volatile 的更新, 允许消费者晚一点感知到, 这样性能会更好
-        cursor.set(publishIndex);
+        cursor.set(sequence);
 
         // 发布完成后, 唤醒可能阻塞等待的消费者线程
         waitStrategy.signalAllWhenBlocking();
+    }
+
+    @Override
+    public void publish(long lo, long hi)
+    {
+        publish(hi);
     }
 
     // =============================================================================
