@@ -191,10 +191,21 @@ public class MultiProducerSequencer implements Sequencer
     }
 
     @Override
-    public void publish(long publishIndex)
+    public void publish(long sequence)
     {
-        setAvailable(publishIndex);
-        System.out.println(Thread.currentThread().getName() + " 生产者发布事件序号: " + publishIndex); // TODO 为了测试
+        setAvailable(sequence);
+        System.out.println(Thread.currentThread().getName() + " 生产者发布事件序号: " + sequence); // TODO 为了测试
+        waitStrategy.signalAllWhenBlocking();
+    }
+
+    @Override
+    public void publish(long lo, long hi)
+    {
+        for (long i = lo; i <= hi; i++)
+        {
+            setAvailable(i);
+        }
+        System.out.println(Thread.currentThread().getName() + " 生产者发布事件序号: " + "[" + lo + " ... " + hi + "]"); // TODO 为了测试
         waitStrategy.signalAllWhenBlocking();
     }
 
