@@ -1,6 +1,7 @@
 package com.zzw.collection;
 
 import com.zzw.collection.dsl.producer.ProducerType;
+import com.zzw.producer.EventTranslatorVararg;
 import com.zzw.producer.MultiProducerSequencer;
 import com.zzw.producer.Sequencer;
 import com.zzw.producer.SingleProducerSequencer;
@@ -11,7 +12,7 @@ import com.zzw.relation.wait.WaitStrategy;
 /**
  * 环形队列
  */
-public class RingBuffer<E>
+public class RingBuffer<E> implements EventSink<E>
 {
 
     /**
@@ -216,5 +217,98 @@ public class RingBuffer<E>
     public void publish(long lo, long hi)
     {
         sequencer.publish(lo, hi);
+    }
+
+    // =============================================================================
+
+    private void translateAndPublish(EventTranslatorVararg<E> translator, long sequence, Object... args)
+    {
+        try
+        {
+            translator.translateTo(get(sequence), sequence, args);
+        }
+        finally
+        {
+            sequencer.publish(sequence);
+        }
+    }
+
+    private void translateAndPublishBatch(
+            final EventTranslatorVararg<E> translator, int batchStartsAt,
+            final int batchSize, final long finalSequence, final Object[][] args)
+    {
+        // args     in [batchStartsAt ....... batchEndsAt] batchSize
+        // sequence in [initialSequence ... finalSequence] batchSize
+        final long initialSequence = finalSequence - (batchSize - 1);
+        try
+        {
+            long      sequence    = initialSequence;
+            final int batchEndsAt = batchStartsAt + batchSize;
+            for (int i = batchStartsAt; i < batchEndsAt; i++)
+            {
+                translator.translateTo(get(sequence), sequence++, args[i]);
+            }
+        }
+        finally
+        {
+            sequencer.publish(initialSequence, finalSequence);
+        }
+    }
+
+    // ----------------------------------------
+
+    @Override
+    public void publishEvent(EventTranslatorVararg<E> translator, Object... args)
+    {
+        final long sequence = sequencer.next();
+        translateAndPublish(translator, sequence, args);
+    }
+
+    @Override
+    public void publishEvents(EventTranslatorVararg<E> translator, Object[]... args)
+    {
+        publishEvents(translator, 0, args.length, args);
+    }
+
+    @Override
+    public void publishEvents(EventTranslatorVararg<E> translator, int batchStartsAt, int batchSize, Object[]... args)
+    {
+        checkBounds(batchStartsAt, batchSize, args);
+        final long finalSequence = sequencer.next(batchSize); // 目标待生产序号
+        translateAndPublishBatch(translator, batchStartsAt, batchSize, finalSequence, args);
+    }
+
+    // =============================================================================
+
+    /**
+     * 检查 args[batchStartsAt ... batchStartsAt + batchSize - 1] 参数
+     */
+    private void checkBounds(final int batchStartsAt, final int batchSize, final Object[][] args)
+    {
+        checkBatchSizing(batchStartsAt, batchSize);
+        batchOverRuns(args, batchStartsAt, batchSize);
+    }
+
+    private void checkBatchSizing(int batchStartsAt, int batchSize)
+    {
+        if (batchStartsAt < 0 || batchSize < 0)
+        {
+            throw new IllegalArgumentException("Both batchStartsAt and batchSize must be positive but got: batchStartsAt " + batchStartsAt + " and batchSize " + batchSize);
+        }
+        else if (batchSize > bufferSize)
+        {
+            throw new IllegalArgumentException("The ring buffer cannot accommodate " + batchSize + " it only has space for " + bufferSize + " entities.");
+        }
+    }
+
+    private <A> void batchOverRuns(final A[] arg0, final int batchStartsAt, final int batchSize)
+    {
+        if (batchStartsAt + batchSize > arg0.length)
+        {
+            throw new IllegalArgumentException(
+                    "A batchSize of: " + batchSize +
+                            " with batchStatsAt of: " + batchStartsAt +
+                            " will overrun the available number of arguments: " + (arg0.length - batchStartsAt));
+        }
     }
 }
