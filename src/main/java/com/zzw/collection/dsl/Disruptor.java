@@ -193,8 +193,8 @@ public class Disruptor<T>
                 batchEventProcessor.setExceptionHandler(exceptionHandler);
             }
 
-            consumerRepository.add(batchEventProcessor);               // 将消费者加入仓库
-            processorSequences[i] = batchEventProcessor.getSequence(); // 记录消费者的消费序号
+            consumerRepository.add(batchEventProcessor, eventHandler, barrier); // 将消费者加入仓库
+            processorSequences[i] = batchEventProcessor.getSequence();          // 记录消费者的消费序号
         }
 
         // 更新当前生产者注册的消费序号
@@ -216,7 +216,7 @@ public class Disruptor<T>
     }
 
     /**
-     * 注册多线程消费者 (有上游依赖消费者, 仅依赖生产者序列)
+     * 注册多线程消费者(依赖生产序号 + 有上游依赖)
      *
      * @param barrierSequences 依赖的上游消费序号数组
      * @param workHandlers     用户自定义的事件处理器数组
@@ -230,7 +230,7 @@ public class Disruptor<T>
         // 创建多线程消费者池
         final WorkerPool<T> workerPool = new WorkerPool<>(ringBuffer, sequenceBarrier, exceptionHandler, workHandlers);
         // 将消费者池加入仓库
-        consumerRepository.add(workerPool);
+        consumerRepository.add(workerPool, sequenceBarrier);
 
         // 消费者池的消费序号
         final Sequence[] workerSequences = workerPool.getWorkerSequences();
