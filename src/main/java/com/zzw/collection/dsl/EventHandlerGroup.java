@@ -8,6 +8,7 @@ import com.zzw.relation.Sequence;
 /**
  * 事件处理器组
  */
+@SuppressWarnings("all")
 public class EventHandlerGroup<T>
 {
 
@@ -34,6 +35,27 @@ public class EventHandlerGroup<T>
 
     // =============================================================================
 
+    /**
+     * 创建一个新的事件处理器组, 将本组中的消费者与 otherHandlerGroup 合并在一起
+     *
+     * @param otherHandlerGroup 要合并的事件处理器组
+     */
+    public EventHandlerGroup<T> and(final EventHandlerGroup<T> otherHandlerGroup)
+    {
+        final Sequence[] combinedSequences = new Sequence[this.sequences.length + otherHandlerGroup.sequences.length];
+        System.arraycopy(this.sequences, 0, combinedSequences, 0, this.sequences.length);
+        System.arraycopy(
+                otherHandlerGroup.sequences, 0,
+                combinedSequences, this.sequences.length, otherHandlerGroup.sequences.length
+        );
+        return new EventHandlerGroup<>(disruptor, consumerRepository, combinedSequences);
+    }
+
+    // ----------------------------------------
+
+    /**
+     * <pre><code>dw.handleEventsWith(A).then(B);</code></pre>
+     */
     @SafeVarargs
     public final EventHandlerGroup<T> then(final EventHandler<? super T>... handlers)
     {
@@ -42,6 +64,7 @@ public class EventHandlerGroup<T>
 
     /**
      * 向 disruptor 注册单线程消费者(依赖生产序号 + 上游依赖为 sequences)
+     * <pre><code>dw.after(A).handleEventsWith(B);</code></pre>
      */
     @SafeVarargs
     public final EventHandlerGroup<T> handleEventsWith(final EventHandler<? super T>... handlers)
@@ -51,6 +74,9 @@ public class EventHandlerGroup<T>
 
     // ----------------------------------------
 
+    /**
+     * <pre><code>dw.handleEventsWith(A).thenHandleEventsWithWorkerPool(B, C);</code></pre>
+     */
     @SafeVarargs
     public final EventHandlerGroup<T> thenHandleEventsWithWorkerPool(final WorkHandler<? super T>... handlers)
     {
@@ -59,6 +85,7 @@ public class EventHandlerGroup<T>
 
     /**
      * 向 disruptor 注册多线程消费者(依赖生产序号 + 上游依赖为 sequences)
+     * <pre><code>dw.after(A).handleEventsWithWorkerPool(B, C);</code></pre>
      */
     @SafeVarargs
     public final EventHandlerGroup<T> handleEventsWithWorkerPool(final WorkHandler<? super T>... handlers)
