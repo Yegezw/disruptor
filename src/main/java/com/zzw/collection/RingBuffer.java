@@ -212,7 +212,7 @@ public class RingBuffer<E> implements EventSink<E>
     }
 
     /**
-     * @see Sequencer#publish(long, long) 
+     * @see Sequencer#publish(long, long)
      */
     public void publish(long lo, long hi)
     {
@@ -310,5 +310,14 @@ public class RingBuffer<E> implements EventSink<E>
                             " with batchStatsAt of: " + batchStartsAt +
                             " will overrun the available number of arguments: " + (arg0.length - batchStartsAt));
         }
+    }
+
+    @Override
+    public String toString()
+    {
+        return "RingBuffer{" +
+                "bufferSize = " + bufferSize +
+                ", sequencer = " + sequencer +
+                "}";
     }
 }
