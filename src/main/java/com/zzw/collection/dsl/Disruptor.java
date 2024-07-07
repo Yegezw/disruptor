@@ -6,15 +6,13 @@ import com.zzw.collection.dsl.consumer.ConsumerInfo;
 import com.zzw.collection.dsl.consumer.ConsumerRepository;
 import com.zzw.collection.dsl.producer.ProducerType;
 import com.zzw.collection.exception.ExceptionHandler;
-import com.zzw.consumer.BatchEventProcessor;
-import com.zzw.consumer.EventHandler;
-import com.zzw.consumer.WorkHandler;
-import com.zzw.consumer.WorkerPool;
+import com.zzw.consumer.*;
 import com.zzw.relation.Sequence;
 import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.WaitStrategy;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -62,6 +60,7 @@ public class Disruptor<T>
      * @param producerType 生产者类型(单线程生产者 OR 多线程生产者)
      * @param waitStrategy 指定的消费者阻塞策略
      */
+    @Deprecated
     public Disruptor(
             final EventFactory<T> eventFactory,
             final int bufferSize,
@@ -69,8 +68,38 @@ public class Disruptor<T>
             final ProducerType producerType,
             final WaitStrategy waitStrategy)
     {
+        this(
+                RingBuffer.create(producerType, eventFactory, bufferSize, waitStrategy),
+                executor
+        );
+    }
+
+    /**
+     * 创建 Disruptor
+     *
+     * @param eventFactory  用户自定义的事件工厂
+     * @param bufferSize    ringBuffer 容量
+     * @param threadFactory 线程工厂
+     * @param producerType  生产者类型(单线程生产者 OR 多线程生产者)
+     * @param waitStrategy  指定的消费者阻塞策略
+     */
+    public Disruptor(
+            final EventFactory<T> eventFactory,
+            final int bufferSize,
+            final ThreadFactory threadFactory,
+            final ProducerType producerType,
+            final WaitStrategy waitStrategy)
+    {
+        this(
+                RingBuffer.create(producerType, eventFactory, bufferSize, waitStrategy),
+                new BasicExecutor(threadFactory)
+        );
+    }
+
+    private Disruptor(final RingBuffer<T> ringBuffer, final Executor executor)
+    {
+        this.ringBuffer = ringBuffer;
         this.executor   = executor;
-        this.ringBuffer = RingBuffer.create(producerType, eventFactory, bufferSize, waitStrategy);
     }
 
     public void handleExceptionsWith(final ExceptionHandler<? super T> exceptionHandler)
@@ -310,5 +339,15 @@ public class Disruptor<T>
         // 所有 "最尾端消费者线程的序号" >= "生产序号"
         // 说明所有消费者线程都已经 "把已生产的事件全部消费完成", 返回 false
         return false;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "Disruptor{" +
+                "ringBuffer = " + ringBuffer +
+                ", started = " + started +
+                ", executor = " + executor +
+                '}';
     }
 }
