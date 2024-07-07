@@ -2,6 +2,7 @@ package com.zzw.collection.dsl.consumer;
 
 import com.zzw.consumer.WorkerPool;
 import com.zzw.relation.Sequence;
+import com.zzw.relation.SequenceBarrier;
 
 import java.util.concurrent.Executor;
 
@@ -14,15 +15,20 @@ public class WorkerPoolInfo<T> implements ConsumerInfo
     /**
      * 多线程消费者池
      */
-    private final WorkerPool<T> workerPool;
+    private final WorkerPool<T>   workerPool;
+    /**
+     * 消费者的消费序号屏障
+     */
+    private final SequenceBarrier sequenceBarrier;
     /**
      * 默认 "是最尾端的消费者"
      */
-    private       boolean       endOfChain = true;
+    private       boolean         endOfChain = true;
 
-    public WorkerPoolInfo(WorkerPool<T> workerPool)
+    public WorkerPoolInfo(final WorkerPool<T> workerPool, final SequenceBarrier sequenceBarrier)
     {
-        this.workerPool = workerPool;
+        this.workerPool      = workerPool;
+        this.sequenceBarrier = sequenceBarrier;
     }
 
     @Override
@@ -59,5 +65,11 @@ public class WorkerPoolInfo<T> implements ConsumerInfo
     public Sequence[] getSequences()
     {
         return workerPool.getWorkerSequences();
+    }
+
+    @Override
+    public SequenceBarrier getBarrier()
+    {
+        return sequenceBarrier;
     }
 }

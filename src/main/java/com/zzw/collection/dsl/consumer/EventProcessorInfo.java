@@ -1,7 +1,9 @@
 package com.zzw.collection.dsl.consumer;
 
+import com.zzw.consumer.EventHandler;
 import com.zzw.consumer.EventProcessor;
 import com.zzw.relation.Sequence;
+import com.zzw.relation.SequenceBarrier;
 
 import java.util.concurrent.Executor;
 
@@ -12,17 +14,39 @@ public class EventProcessorInfo<T> implements ConsumerInfo
 {
 
     /**
-     * 事件处理器接口(消费者)
+     * 事件处理器接口(消费者线程)
      */
-    private final EventProcessor eventProcessor;
+    private final EventProcessor          eventProcessor;
+    /**
+     * 事件处理器接口(消费者接口)
+     */
+    private final EventHandler<? super T> handler;
+    /**
+     * 消费者的消费序号屏障
+     */
+    private final SequenceBarrier         sequenceBarrier;
     /**
      * 默认 "是最尾端的消费者"
      */
-    private       boolean        endOfChain = true;
+    private       boolean                 endOfChain = true;
 
-    public EventProcessorInfo(EventProcessor eventProcessor)
+    public EventProcessorInfo(final EventProcessor eventProcessor,
+                              final EventHandler<? super T> handler,
+                              final SequenceBarrier sequenceBarrier)
     {
-        this.eventProcessor = eventProcessor;
+        this.eventProcessor  = eventProcessor;
+        this.handler         = handler;
+        this.sequenceBarrier = sequenceBarrier;
+    }
+
+    public EventProcessor getEventProcessor()
+    {
+        return eventProcessor;
+    }
+
+    public EventHandler<? super T> getHandler()
+    {
+        return handler;
     }
 
     @Override
@@ -59,5 +83,11 @@ public class EventProcessorInfo<T> implements ConsumerInfo
     public Sequence[] getSequences()
     {
         return new Sequence[]{eventProcessor.getSequence()};
+    }
+
+    @Override
+    public SequenceBarrier getBarrier()
+    {
+        return sequenceBarrier;
     }
 }

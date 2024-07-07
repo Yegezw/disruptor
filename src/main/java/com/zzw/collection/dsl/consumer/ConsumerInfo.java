@@ -1,6 +1,7 @@
 package com.zzw.collection.dsl.consumer;
 
 import com.zzw.relation.Sequence;
+import com.zzw.relation.SequenceBarrier;
 
 import java.util.concurrent.Executor;
 
@@ -41,4 +42,9 @@ public interface ConsumerInfo
      * 获得消费者的序号(多线程消费者有多个序号对象)
      */
     Sequence[] getSequences();
+
+    /**
+     * 获得消费者的消费序号屏障
+     */
+    SequenceBarrier getBarrier();
 }
