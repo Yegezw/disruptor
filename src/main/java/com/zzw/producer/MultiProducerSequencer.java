@@ -1,58 +1,25 @@
 package com.zzw.producer;
 
 import com.zzw.relation.Sequence;
-import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.WaitStrategy;
-import com.zzw.util.SequenceGroups;
 import com.zzw.util.SequenceUtil;
 import com.zzw.util.Util;
 import sun.misc.Unsafe;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 
 /**
  * 多线程生产者序号生成器
  */
-public class MultiProducerSequencer implements Sequencer
+public class MultiProducerSequencer extends AbstractSequencer
 {
 
-    /**
-     * 生产序号生成器所属 RingBuffer 的大小
-     */
-    private final int      bufferSize;
-    /**
-     * 多线程生产者共同的已申请序号(可能未发布)
-     */
-    private final Sequence cursor = new Sequence();
-
-    // ----------------------------------------
-
-    /**
-     * gatingSequences 原子更新器
-     */
-    private static final AtomicReferenceFieldUpdater<MultiProducerSequencer, Sequence[]> SEQUENCE_UPDATER =
-            AtomicReferenceFieldUpdater.newUpdater(
-                    MultiProducerSequencer.class,
-                    Sequence[].class,
-                    "gatingSequences"
-            );
-
-    /**
-     * 生产序号生成器所属 RingBuffer 的消费序号数组
-     */
-    @SuppressWarnings("all")
-    private volatile Sequence[]   gatingSequences     = new Sequence[0];
-    /**
-     * 消费者等待策略
-     */
-    private final    WaitStrategy waitStrategy;
     /**
      * <p>缓存的最小消费序号, 并不是实时获取的
      * <p>每次申请生产序号都实时获取消费序号<br>
      * 会触发对消费者 sequence 强一致的读, 迫使消费者线程所在的 CPU 刷新缓存, 而这是不需要的
      */
-    private final    Sequence     gatingSequenceCache = new Sequence();
+    private final Sequence gatingSequenceCache = new Sequence();
 
     // ----------------------------------------
 
@@ -74,9 +41,7 @@ public class MultiProducerSequencer implements Sequencer
 
     public MultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy)
     {
-        this.bufferSize   = bufferSize;
-        this.waitStrategy = waitStrategy;
-
+        super(bufferSize, waitStrategy);
         this.availableBuffer = new int[bufferSize];
         this.indexMask       = bufferSize - 1;
         this.indexShift      = log2(bufferSize);
@@ -104,46 +69,6 @@ public class MultiProducerSequencer implements Sequencer
     }
 
     // =============================================================================
-
-    @Override
-    public int getBufferSize()
-    {
-        return bufferSize;
-    }
-
-    @Override
-    public Sequence getCursor()
-    {
-        return cursor;
-    }
-
-    // ----------------------------------------
-
-    @Override
-    public SequenceBarrier newBarrier()
-    {
-        return new SequenceBarrier(this, waitStrategy, cursor, new Sequence[0]);
-    }
-
-    @Override
-    public SequenceBarrier newBarrier(Sequence... sequencesToTrack)
-    {
-        return new SequenceBarrier(this, waitStrategy, cursor, sequencesToTrack);
-    }
-
-    @Override
-    public void addGatingSequences(Sequence... gatingSequences)
-    {
-        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, cursor, gatingSequences);
-    }
-
-    @Override
-    public void removeGatingSequence(Sequence sequence)
-    {
-        SequenceGroups.removeSequence(this, SEQUENCE_UPDATER, sequence);
-    }
-
-    // ----------------------------------------
 
     @Override
     public long next()
