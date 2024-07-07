@@ -10,39 +10,23 @@ import com.zzw.consumer.OrderEventHandler;
 import com.zzw.producer.OrderEventTranslator;
 import com.zzw.relation.wait.BlockingWaitStrategy;
 
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
 
 public class Test6
 {
-
-    private static ThreadPoolExecutor    pool;
-    private static Disruptor<OrderEvent> disruptor;
-
-    private static void init()
-    {
-        pool      = new ThreadPoolExecutor(
-                10,
-                10, 0L, TimeUnit.MICROSECONDS,
-                new SynchronousQueue<>(),
-                r -> new Thread(r)
-        );
-        disruptor = new Disruptor<>(
-                new OrderEventFactory(),
-                128,
-                pool,
-                ProducerType.SINGLE,
-                new BlockingWaitStrategy()
-        );
-    }
 
     //             / -> [B & C] -> D
     // Event -> A -         
     //             \ ->    E    -> F
     public static void main(String[] args)
     {
-        init();
+        Disruptor<OrderEvent> disruptor = new Disruptor<>(
+                new OrderEventFactory(),
+                128,
+                Executors.defaultThreadFactory(),
+                ProducerType.SINGLE,
+                new BlockingWaitStrategy()
+        );
 
         // ======================================================================================
 
@@ -58,10 +42,34 @@ public class Test6
         consumerA.then(b, c).then(d);
         consumerA.then(e).then(f);
 
-        // ======================================================================================
-
         // 启动消费者线程
         disruptor.start();
+
+        /*
+         * Disruptor {
+         *     ringBuffer = RingBuffer {
+         *         bufferSize = 128,
+         *         sequencer = AbstractSequencer {
+         *             waitStrategy = com.zzw.relation.wait.BlockingWaitStrategy,
+         *             cursor = -1,
+         *             gatingSequences = [-1, -1]
+         *         }
+         *     },
+         *     started = true,
+         *     executor = BasicExecutor {
+         *         threads =
+         *         {name = pool-1-thread-1, id = 20, state = TIMED_WAITING, lockInfo = null}
+         *         {name = pool-1-thread-2, id = 21, state = TIMED_WAITING, lockInfo = null}
+         *         {name = pool-1-thread-3, id = 22, state = TIMED_WAITING, lockInfo = null}
+         *         {name = pool-1-thread-4, id = 23, state = TIMED_WAITING, lockInfo = null}
+         *         {name = pool-1-thread-5, id = 24, state = TIMED_WAITING, lockInfo = null}
+         *         {name = pool-1-thread-6, id = 25, state = TIMED_WAITING, lockInfo = null}
+         *     }
+         * }
+         */
+        System.out.println(disruptor);
+
+        // ======================================================================================
 
         RingBuffer<OrderEvent> ringBuffer = disruptor.getRingBuffer();
         OrderEventTranslator   translator = new OrderEventTranslator();
@@ -80,6 +88,5 @@ public class Test6
         disruptor.shutdown();
 
         System.out.println("disruptor shutdown");
-        pool.shutdown(); // 关闭线程池
     }
 }
