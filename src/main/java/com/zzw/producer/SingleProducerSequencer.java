@@ -1,52 +1,15 @@
 package com.zzw.producer;
 
-import com.zzw.relation.Sequence;
-import com.zzw.relation.SequenceBarrier;
 import com.zzw.relation.wait.WaitStrategy;
-import com.zzw.util.SequenceGroups;
 import com.zzw.util.SequenceUtil;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 
 /**
  * 单线程生产者序号生成器
  */
-public class SingleProducerSequencer implements Sequencer
+public class SingleProducerSequencer extends AbstractSequencer
 {
-
-    /**
-     * 生产者序号生成器所属 RingBuffer 的大小
-     */
-    private final int      bufferSize;
-    /**
-     * 当前已发布的生产序号(区别于 nextValue)
-     */
-    private final Sequence cursor = new Sequence();
-
-    // ----------------------------------------
-
-    /**
-     * gatingSequences 原子更新器
-     */
-    private static final AtomicReferenceFieldUpdater<SingleProducerSequencer, Sequence[]> SEQUENCE_UPDATER =
-            AtomicReferenceFieldUpdater.newUpdater(
-                    SingleProducerSequencer.class,
-                    Sequence[].class,
-                    "gatingSequences"
-            );
-
-    /**
-     * 生产者序号生成器所属 RingBuffer 的消费者序号数组
-     */
-    @SuppressWarnings("all")
-    private volatile Sequence[]   gatingSequences = new Sequence[0];
-    /**
-     * 消费者等待策略
-     */
-    private final    WaitStrategy waitStrategy;
-
-    // ----------------------------------------
 
     /**
      * 避免伪共享, 左半部分填充
@@ -69,50 +32,11 @@ public class SingleProducerSequencer implements Sequencer
      */
     protected long p21, p22, p23, p24, p25, p26, p27;
 
-    // =============================================================================
+    // ----------------------------------------
 
-    public SingleProducerSequencer(int bufferSize, WaitStrategy WaitStrategy)
+    public SingleProducerSequencer(int bufferSize, WaitStrategy waitStrategy)
     {
-        this.bufferSize   = bufferSize;
-        this.waitStrategy = WaitStrategy;
-    }
-
-    @Override
-    public int getBufferSize()
-    {
-        return bufferSize;
-    }
-
-    @Override
-    public Sequence getCursor()
-    {
-        return cursor;
-    }
-
-    // =============================================================================
-
-    @Override
-    public SequenceBarrier newBarrier()
-    {
-        return new SequenceBarrier(this, waitStrategy, cursor, new Sequence[0]);
-    }
-
-    @Override
-    public SequenceBarrier newBarrier(Sequence... sequencesToTrack)
-    {
-        return new SequenceBarrier(this, waitStrategy, cursor, sequencesToTrack);
-    }
-
-    @Override
-    public void addGatingSequences(Sequence... gatingSequences)
-    {
-        SequenceGroups.addSequences(this, SEQUENCE_UPDATER, cursor, gatingSequences);
-    }
-
-    @Override
-    public void removeGatingSequence(Sequence sequence)
-    {
-        SequenceGroups.removeSequence(this, SEQUENCE_UPDATER, sequence);
+        super(bufferSize, waitStrategy);
     }
 
     // =============================================================================
