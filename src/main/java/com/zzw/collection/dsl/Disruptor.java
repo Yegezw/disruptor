@@ -243,6 +243,43 @@ public class Disruptor<T>
     // ----------------------------------------
 
     /**
+     * 将已存在的 EventHandler[] 打包成 EventHandlerGroup
+     * <pre><code>dw.after(A).handleEventsWith(B);</code></pre>
+     */
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public final EventHandlerGroup<T> after(final EventHandler<T>... eventHandlers)
+    {
+        final Sequence[] sequences = new Sequence[eventHandlers.length];
+        for (int i = 0, handlersLength = eventHandlers.length; i < handlersLength; i++)
+        {
+            sequences[i] = consumerRepository.getSequenceFor(eventHandlers[i]);
+        }
+
+        return new EventHandlerGroup<>(this, consumerRepository, sequences);
+    }
+
+    /**
+     * 将已存在的 EventProcessor[] 打包成 EventHandlerGroup
+     */
+    public EventHandlerGroup<T> after(final EventProcessor... processors)
+    {
+        for (final EventProcessor processor : processors)
+        {
+            consumerRepository.add(processor);
+        }
+
+        Sequence[] sequences = new Sequence[processors.length];
+        for (int i = 0; i < sequences.length; i++)
+        {
+            sequences[i] = processors[i].getSequence();
+        }
+        return new EventHandlerGroup<>(this, consumerRepository, sequences);
+    }
+
+    // ----------------------------------------
+
+    /**
      * 更新当前生产者注册的消费序号
      *
      * @param barrierSequences   依赖的上游消费序号数组
