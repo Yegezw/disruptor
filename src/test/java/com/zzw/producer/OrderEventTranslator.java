@@ -2,21 +2,23 @@ package com.zzw.producer;
 
 import com.zzw.collection.OrderEvent;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * 订单事件更新器
  */
 public class OrderEventTranslator implements EventTranslatorVararg<OrderEvent>
 {
 
-    private int num = 0;
+    private final AtomicInteger count = new AtomicInteger(0);
 
     @Override
     public void translateTo(OrderEvent event, long sequence, Object... args)
     {
-        event.setMessage("message-" + num);
-        event.setPrice(num * 10);
-        num++;
+        int i = count.getAndIncrement();
+        event.setMessage("message-" + i);
+        event.setPrice(i * 10);
 
-        System.out.println("生产者发布事件: " + event);
+        System.out.println(Thread.currentThread().getName() + " 生产者更新 " + sequence + " 号事件: " + event);
     }
 }
